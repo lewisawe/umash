@@ -88,10 +88,9 @@ umash/
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-# AWS creds with Bedrock access. This build defaults to the `simi-ops`
-# profile and Amazon Nova Pro (both verified to invoke); the `default`
-# account may only LIST Bedrock models, not invoke them.
-export UMASH_AWS_PROFILE=simi-ops      # or AWS_PROFILE
+# AWS creds with Bedrock *invoke* access (not just list). Umash uses the
+# standard AWS credential chain; set a profile only if you need to override it.
+export UMASH_AWS_PROFILE=your-bedrock-profile   # optional; else AWS_PROFILE / default chain
 export AWS_REGION=us-east-1
 # optional model override (default: us.amazon.nova-pro-v1:0):
 # export UMASH_MODEL_ID=us.amazon.nova-lite-v1:0

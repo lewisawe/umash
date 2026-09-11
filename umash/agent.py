@@ -40,8 +40,8 @@ policy. Your job is ordering, tone, and deciding what to put in front of the
 human versus what to keep quiet.
 """
 
-# Amazon Nova Pro — active on the simi-ops account and avoids the Anthropic
-# "legacy model / 30-day access" issue. Override per-call or via UMASH_MODEL_ID.
+# Amazon Nova Pro — a solid default that avoids the Anthropic "legacy model /
+# 30-day access" gate. Override per-call or via UMASH_MODEL_ID.
 # Nova Lite (us.amazon.nova-lite-v1:0) is a cheaper/faster fallback.
 DEFAULT_MODEL_ID = "us.amazon.nova-pro-v1:0"
 
@@ -49,22 +49,27 @@ DEFAULT_MODEL_ID = "us.amazon.nova-pro-v1:0"
 def build_agent(model_id: str | None = None):
     """Construct the Strands agent on Bedrock. Requires AWS creds with Bedrock.
 
-    Profile/region resolution (Bedrock access differs per account here):
-      - AWS profile: env UMASH_AWS_PROFILE, else AWS_PROFILE, else "simi-ops".
-        simi-ops is the account with verified Bedrock invoke access; the
-        `default` profile may only list models, not invoke them.
+    Credential/region resolution uses the standard AWS chain, with optional
+    Umash-specific overrides:
+      - AWS profile: env UMASH_AWS_PROFILE, else AWS_PROFILE. If neither is set,
+        boto3's default credential resolution is used (default profile, instance
+        role, container role, etc.) — nothing account-specific is assumed.
       - Region: env AWS_REGION, else us-east-1.
+      - Model: `model_id` arg, else env UMASH_MODEL_ID, else DEFAULT_MODEL_ID.
+
+    Note: the account used must have Bedrock *invoke* access, not just list.
     """
     import boto3
     from strands import Agent
     from strands.models import BedrockModel
 
-    profile = (os.environ.get("UMASH_AWS_PROFILE")
-               or os.environ.get("AWS_PROFILE")
-               or "simi-ops")
+    profile = os.environ.get("UMASH_AWS_PROFILE") or os.environ.get("AWS_PROFILE")
     region = os.environ.get("AWS_REGION", "us-east-1")
 
-    session = boto3.Session(profile_name=profile, region_name=region)
+    # Only pass profile_name when one is explicitly set; otherwise let boto3 use
+    # its normal default credential chain.
+    session = (boto3.Session(profile_name=profile, region_name=region)
+               if profile else boto3.Session(region_name=region))
     model = BedrockModel(
         boto_session=session,
         model_id=model_id or os.environ.get("UMASH_MODEL_ID") or DEFAULT_MODEL_ID,
