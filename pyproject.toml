@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "umash"
+version = "0.1.0"
+description = "Afterward — a full-journey aftermath coordinator for families after a death."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Umash" }]
+keywords = ["grief", "estate", "bereavement", "agent", "strands", "bedrock"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business",
+]
+
+# The deterministic product (CLI, policy, session, tests) needs NO third-party
+# deps. Strands/Bedrock are only for the conversational agent and are optional.
+dependencies = []
+
+[project.optional-dependencies]
+agent = [
+    "strands-agents==1.53.0",
+    "boto3>=1.35.0",
+]
+dev = [
+    "pytest>=7",
+]
+
+[project.scripts]
+umash = "umash.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/lewisawe/umash"
+Repository = "https://github.com/lewisawe/umash"
+
+[tool.setuptools.packages.find]
+include = ["umash*"]
+
+[tool.setuptools.package-data]
+umash = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

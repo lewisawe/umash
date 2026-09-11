@@ -1,0 +1,135 @@
+"""Tests for the stateful layer: CaseState lifecycle and the Session loop.
+
+No AWS creds and no Strands needed — this is the deterministic product core.
+
+Run:  python -m pytest tests/  (or)  python tests/test_session.py
+"""
+
+import os
+import sys
+import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from umash.policy import build_case, CaseState, Status, InvalidTransition, build_draft
+from umash.session import Session, auto_decider, Decision
+
+
+def test_build_case_classifies_and_counts():
+    c = build_case("t", "KE", "UK", "my father")
+    assert c.cross_border is True
+    assert len(c.tasks()) == 18
+    assert len(c.routine()) == 13
+    assert len(c.weighty()) == 5
+
+
+def test_weighty_needs_decision_before_approval():
+    c = build_case("t", "KE", "UK", "x")
+    w = c.weighty()[0]
+    try:
+        c.approve(w.task_id)  # no decision -> must be blocked
+    except InvalidTransition:
+        pass
+    else:
+        raise AssertionError("weighty task approved with no recorded decision")
+    # with a decision it goes through
+    c.approve(w.task_id, "we will pay to release the body")
+    assert c.get(w.task_id).status is Status.APPROVED
+    assert "release the body" in c.get(w.task_id).decision
+
+
+def test_routine_batch_approves_without_decision():
+    c = build_case("t", "KE", "UK", "x")
+    s = Session(c)
+    s.prepare_routine()
+    n = s.approve_routine_batch()
+    assert n == 13
+    assert all(t.status is Status.APPROVED for t in c.routine())
+
+
+def test_escalations_ordered_by_urgency():
+    c = build_case("t", "KE", "UK", "x")
+    esc = c.pending_escalations()
+    # soonest real deadline first; None deadlines last
+    deadlines = [t.deadline_days for t in esc]
+    with_dl = [d for d in deadlines if d is not None]
+    assert with_dl == sorted(with_dl)
+    assert deadlines[0] == min(with_dl)
+    # the body-release / repatriation clock should lead
+    assert esc[0].deadline_days <= 3
+
+
+def test_full_session_flow_resolves_everything():
+    s = Session.new("t", "KE", "UK", "my father")
+    out = s.run(auto_decider)
+    assert out["routine_prepared"] == 13
+    assert out["routine_approved"] == 13
+    assert len(out["escalations"]) == 5
+    assert all(e["outcome"] == "approved" for e in out["escalations"])
+    assert out["summary"]["pending_escalations"] == 0
+
+
+def test_decline_records_and_resolves():
+    c = build_case("t", "KE", "UK", "x")
+    s = Session(c)
+    s.prepare_escalations()
+    w = c.pending_escalations()[0]
+    s.run_escalations(lambda t: Decision(False, "bury locally instead")
+                      if t.task_id == w.task_id else None)
+    assert c.get(w.task_id).status is Status.DECLINED
+    assert c.get(w.task_id).decision == "bury locally instead"
+
+
+def test_unconfirmed_only_lists_sent():
+    c = build_case("t", "KE", "UK", "x")
+    s = Session(c)
+    s.prepare_routine()
+    s.approve_routine_batch()
+    # approved != chased; nothing is "sent" yet
+    assert c.unconfirmed() == []
+    t = c.routine()[0]
+    c.mark_sent(t.task_id)
+    assert [x.task_id for x in c.unconfirmed()] == [t.task_id]
+    c.confirm(t.task_id)
+    assert c.unconfirmed() == []
+
+
+def test_cannot_send_before_approval():
+    c = build_case("t", "KE", "UK", "x")
+    w = c.weighty()[0]
+    try:
+        c.mark_sent(w.task_id)  # still pending
+    except InvalidTransition:
+        pass
+    else:
+        raise AssertionError("sent a task that was never approved")
+
+
+def test_persistence_roundtrip_preserves_state():
+    s = Session.new("t", "KE", "UK", "my father")
+    s.run(auto_decider)
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "case.json")
+        s.case.save(p)
+        loaded = CaseState.load(p)
+    assert loaded.summary() == s.case.summary()
+    assert loaded.deceased_name == "my father"
+    assert loaded.cross_border is True
+
+
+def test_build_draft_weighty_is_a_decision_prompt():
+    esc, draft = build_draft("hospital billing",
+                             "Settle the hospital bill to release the body")
+    assert esc is True
+    assert "NEEDS YOUR DECISION FIRST" in draft
+    esc2, draft2 = build_draft("employer", "Notify employer and next of kin")
+    assert esc2 is False
+    assert "has passed away" in draft2
+
+
+if __name__ == "__main__":
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
+    for fn in fns:
+        fn()
+        print(f"PASS {fn.__name__}")
+    print(f"\nAll {len(fns)} tests passed.")

@@ -1,0 +1,16 @@
+{
+  "case_id": "demo-001",
+  "deceased_name": "Mwangi (synthetic)",
+  "relationship": "father",
+  "died_in": "KE",
+  "rest_in": "UK",
+  "situation": "My father passed away in Nairobi. He lived in the UK and the family wants him laid to rest there.",
+  "known_accounts": [
+    "Kenyan bank account",
+    "UK bank account",
+    "NSSF",
+    "two streaming subscriptions",
+    "mobile line"
+  ],
+  "note": "Fully synthetic. No real person. Cross-border (KE death, UK resting place) exercises the repatriation branch."
+}
