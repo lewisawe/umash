@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umash — Case</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .app { padding-bottom: var(--section-gap); }
+
+  /* case header */
+  .case-head { padding: var(--spacing-32) 0 var(--spacing-24); }
+  .case-head .hero-headline { text-align: left; font-size: 44px; letter-spacing: -0.02em; }
+  .case-meta { display: flex; gap: var(--spacing-24); flex-wrap: wrap; margin-top: var(--spacing-12); }
+  .case-meta span { color: var(--color-stone-gray); font-size: var(--text-caption); }
+
+  /* progress metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-16); margin-bottom: var(--spacing-24); }
+  .metric { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-20) var(--spacing-24); }
+  .metric__n { font-family: var(--font-sana-serif); font-weight: 400; font-size: 40px; line-height: 1; }
+  .metric__l { color: var(--color-stone-gray); font-size: var(--text-caption); margin-top: var(--spacing-8); }
+
+  /* progress rail */
+  .rail { height: 6px; border-radius: 9999px; background: var(--color-frost-wash); overflow: hidden; }
+  .rail__fill { height: 100%; background: var(--color-ink-black); width: 0; transition: width 240ms ease; }
+
+  /* action bar (batch approval) — ink surface, lime CTA allowed here */
+  .actionbar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-16); flex-wrap: wrap; }
+  .actionbar .grow { min-width: 220px; }
+  .actionbar h3 { color: var(--color-paper-white); font-size: var(--text-heading); font-weight: var(--fw-medium); }
+  .actionbar p { color: var(--color-stone-gray); font-size: var(--text-caption); margin-top: 4px; }
+
+  /* phase groups */
+  .phase { margin-top: var(--spacing-32); }
+  .phase__label { display: flex; align-items: baseline; gap: var(--spacing-12); margin-bottom: var(--spacing-16); }
+  .phase__label h2 { font-size: var(--text-heading); font-weight: var(--fw-medium); }
+  .phase__count { color: var(--color-stone-gray); font-size: var(--text-caption); }
+
+  /* task row */
+  .task { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-16) var(--spacing-24); }
+  .task + .task { margin-top: var(--spacing-12); }
+  .task__top { display: flex; align-items: flex-start; gap: var(--spacing-16); }
+  .task__title { font-weight: var(--fw-450); }
+  .task__target { color: var(--color-stone-gray); font-size: var(--text-caption); margin-top: 2px; }
+  .task__tags { display: flex; gap: var(--spacing-8); align-items: center; flex-wrap: wrap; }
+  .task__actions { display: flex; gap: var(--spacing-8); margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .task__decision { margin-top: var(--spacing-12); font-size: var(--text-caption); color: var(--color-ink-black); background: var(--color-frost-wash); border-radius: 12px; padding: var(--spacing-10) var(--spacing-16); }
+  .deadline { color: var(--color-ink-black); font-size: var(--text-caption); font-weight: var(--fw-450); }
+  .deadline--soon { color: #b91c1c; }
+
+  /* create-case panel */
+  .create { max-width: 560px; margin: var(--section-gap) auto; }
+  .create .hero-headline { font-size: 44px; margin-bottom: var(--spacing-24); }
+  .field { display: flex; flex-direction: column; gap: var(--spacing-8); }
+  .field label { font-size: var(--text-caption); color: var(--color-stone-gray); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-16); }
+
+  /* escalation modal */
+  .scrim { position: fixed; inset: 0; background: rgba(10,18,23,0.55); display: none; align-items: center; justify-content: center; padding: var(--spacing-24); z-index: 50; }
+  .scrim.open { display: flex; }
+  .modal { background: var(--color-paper-white); border-radius: var(--radius-cards); padding: var(--spacing-32); max-width: 560px; width: 100%; }
+  .modal__eyebrow { display: inline-flex; }
+  .modal h3 { font-size: var(--text-heading); font-weight: var(--fw-medium); margin: var(--spacing-16) 0 var(--spacing-8); }
+  .modal__why { background: var(--color-frost-wash); border-radius: 16px; padding: var(--spacing-16); font-size: var(--text-caption); }
+  .modal__why ul { margin: var(--spacing-8) 0 0 var(--spacing-16); }
+  .modal__draft { white-space: pre-wrap; font-size: var(--text-caption); color: var(--color-stone-gray); border: 1px solid var(--color-frost-wash); border-radius: 16px; padding: var(--spacing-16); max-height: 160px; overflow: auto; }
+  .modal__queue { color: var(--color-stone-gray); font-size: var(--text-caption); }
+  .modal__actions { display: flex; gap: var(--spacing-12); margin-top: var(--spacing-8); }
+
+  .empty { text-align: center; color: var(--color-stone-gray); padding: var(--spacing-62) 0; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--color-ink-black); color: var(--color-paper-white); padding: var(--spacing-12) var(--spacing-24); border-radius: 9999px; font-size: var(--text-caption); opacity: 0; transition: opacity 200ms; pointer-events: none; z-index: 60; }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 860px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .task__top { flex-wrap: wrap; }
+    .task__actions { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page app">
+  <nav class="nav">
+    <a class="nav__wordmark" href="index.html">Umash</a>
+    <ul class="nav__links">
+      <li><a href="#" id="link-cases">Cases</a></li>
+    </ul>
+    <button class="btn btn--ink" id="btn-new-nav">New case</button>
+  </nav>
+
+  <!-- CREATE CASE -->
+  <section id="view-create" class="create" hidden>
+    <h1 class="hero-headline">Open a case.</h1>
+    <div class="card card--frost stack-16">
+      <div class="field">
+        <label for="f-name">Who has passed away?</label>
+        <input class="input" id="f-name" placeholder="e.g. my father" value="my father">
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="f-died">Where did the death happen?</label>
+          <select class="input" id="f-died">
+            <option value="KE">Kenya</option>
+            <option value="UK">United Kingdom</option>
+            <option value="US">United States</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-rest">Where will they be laid to rest?</label>
+          <select class="input" id="f-rest">
+            <option value="UK">United Kingdom</option>
+            <option value="KE">Kenya</option>
+            <option value="US">United States</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn--ink btn--full" id="btn-create">Build the plan</button>
+      <p class="muted" style="font-size:var(--text-caption)">Umash drafts and plans. It never files, pays, or books anything on its own.</p>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="view-dash" hidden>
+    <header class="case-head">
+      <p class="section-label">Case plan</p>
+      <h1 class="hero-headline" id="case-title">Case</h1>
+      <div class="case-meta" id="case-meta"></div>
+    </header>
+
+    <!-- metrics -->
+    <div class="metrics" id="metrics"></div>
+    <div class="rail" style="margin-bottom:var(--spacing-32)"><div class="rail__fill" id="rail"></div></div>
+
+    <!-- routine batch bar -->
+    <div class="card card--ink actionbar" id="batchbar" hidden>
+      <div class="grow">
+        <h3 id="batch-title">Routine work, prepared quietly</h3>
+        <p id="batch-sub">These are reversible and low-stakes. Approve them in one stroke.</p>
+      </div>
+      <button class="btn btn--lime" id="btn-batch">Approve routine batch</button>
+    </div>
+
+    <!-- escalation bar -->
+    <div class="card card--ink actionbar" id="escbar" hidden style="margin-top:var(--spacing-16)">
+      <div class="grow">
+        <h3 id="esc-title">Decisions waiting</h3>
+        <p id="esc-sub">Weighty, irreversible, or time-critical. Umash surfaces them one at a time.</p>
+      </div>
+      <button class="btn btn--lime" id="btn-esc">Review decisions</button>
+    </div>
+
+    <!-- phases -->
+    <div id="phases"></div>
+  </section>
+
+  <!-- CASES LIST -->
+  <section id="view-cases" hidden>
+    <header class="case-head"><h1 class="hero-headline" style="text-align:left;font-size:44px">Your cases</h1></header>
+    <div id="cases-list" class="stack-12"></div>
+  </section>
+</div>
+
+<!-- ESCALATION MODAL -->
+<div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="modal stack-16">
+    <span class="tag tag--weighty modal__eyebrow">A decision is needed</span>
+    <span class="modal__queue" id="m-queue"></span>
+    <h3 id="m-title">Decision</h3>
+    <div class="row-wrap">
+      <span class="task__target" id="m-target"></span>
+      <span class="deadline" id="m-deadline"></span>
+    </div>
+    <div class="modal__why">
+      <strong>Why this is escalated, not batched:</strong>
+      <ul id="m-reasons"></ul>
+    </div>
+    <div class="modal__draft" id="m-draft"></div>
+    <div class="field">
+      <label for="m-note">Record your decision (required to approve)</label>
+      <input class="input" id="m-note" placeholder="e.g. Yes — release funds from the joint account">
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost-light" id="m-skip">Skip for now</button>
+      <button class="btn btn--ghost-light" id="m-decline">Decline</button>
+      <button class="btn btn--ink grow" id="m-approve">Approve with this decision</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

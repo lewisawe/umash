@@ -31,3 +31,4 @@ htmlcov/
 
 # Local handoff note (never publish)
 PROGRESS.md
+DESIGN.md
