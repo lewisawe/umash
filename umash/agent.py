@@ -72,6 +72,8 @@ def build_agent(model_id: str | None = None):
         role, container role, etc.) — nothing account-specific is assumed.
       - Region: env AWS_REGION, else us-east-1.
       - Model: `model_id` arg, else env UMASH_MODEL_ID, else DEFAULT_MODEL_ID.
+      - Guardrail (optional): env UMASH_GUARDRAIL_ID + UMASH_GUARDRAIL_VERSION
+        (default DRAFT). Create one with scripts/create_guardrail.py.
 
     Note: the account used must have Bedrock *invoke* access, not just list.
     """
@@ -86,10 +88,29 @@ def build_agent(model_id: str | None = None):
     # its normal default credential chain.
     session = (boto3.Session(profile_name=profile, region_name=region)
                if profile else boto3.Session(region_name=region))
-    model = BedrockModel(
-        boto_session=session,
-        model_id=model_id or os.environ.get("UMASH_MODEL_ID") or DEFAULT_MODEL_ID,
-    )
+
+    model_kwargs = {
+        "boto_session": session,
+        "model_id": model_id or os.environ.get("UMASH_MODEL_ID") or DEFAULT_MODEL_ID,
+    }
+
+    # Optional Amazon Bedrock Guardrail. Umash's real injection defense is
+    # architectural — the model holds no tool that can file, pay, or send, and
+    # the batch-vs-escalate safety call is deterministic code, not model output
+    # — so a hijacked model can at worst produce bad text, never a real action.
+    # A guardrail adds defense-in-depth (prompt-injection filtering, PII
+    # redaction of decedent data, off-topic blocking). Attach one by setting
+    # UMASH_GUARDRAIL_ID (and optionally UMASH_GUARDRAIL_VERSION, default DRAFT).
+    guardrail_id = os.environ.get("UMASH_GUARDRAIL_ID")
+    if guardrail_id:
+        model_kwargs["guardrail_id"] = guardrail_id
+        model_kwargs["guardrail_version"] = os.environ.get("UMASH_GUARDRAIL_VERSION", "DRAFT")
+        # Mask (not block) so a grieving family never hits a hard wall; the
+        # policy layer remains the real gate regardless.
+        model_kwargs["guardrail_redact_input"] = True
+        model_kwargs["guardrail_redact_output"] = True
+
+    model = BedrockModel(**model_kwargs)
     return Agent(model=model, tools=ALL_TOOLS, system_prompt=SYSTEM_PROMPT)
 
 
