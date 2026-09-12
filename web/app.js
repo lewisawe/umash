@@ -35,8 +35,9 @@
     const name = $("f-name").value.trim() || "the deceased";
     const died = $("f-died").value;
     const rest = $("f-rest").value;
+    const faith = $("f-faith").value || null;
     const id = `${name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${Date.now().toString(36)}`.slice(0, 40);
-    current = CaseState.build(id, died, rest, name);
+    current = CaseState.build(id, died, rest, name, faith);
     // Umash prepares routine drafts quietly as soon as the plan is built.
     current.routine().forEach(t => current.recordDraft(t.id));
     current.weighty().forEach(t => current.recordDraft(t.id));  // decision-prompt draft
@@ -55,6 +56,7 @@
     meta.appendChild(el("span", null, `Died in ${esc(diedName)}`));
     meta.appendChild(el("span", null, `Laid to rest in ${esc(restName)}`));
     if (c.crossBorder) meta.appendChild(el("span", null, `Cross-border · repatriation ${esc(diedName)} → ${esc(restName)}`));
+    if (c.faith && window.Umash.FAITHS[c.faith]) meta.appendChild(el("span", null, `${esc(window.Umash.FAITHS[c.faith].label)} tradition`));
 
     // metrics
     const s = c.summary();
