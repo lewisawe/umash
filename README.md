@@ -33,15 +33,27 @@ almost none handle the acute first-72-hours phase or non-US jurisdictions.
 
 ## What Umash does
 
-Umash is **one agent across the whole arc**, organized into three phases:
+Umash is **one agent across the whole arc**, organized into four phases:
 
-1. **Immediate (hours–days):** register the death, mortuary choice + clock,
-   hospital-bill-before-release, funeral director, permits, notifying people,
-   repatriation (one branch, if cross-border).
-2. **Funeral (days–week):** venue, ceremony logistics, permits, obituary/notices,
-   coordinating contributions.
+1. **Immediate (moment of death – days):** the acute window — get a
+   pronouncement of death, the organ-donation decision, locate the will and
+   funeral wishes, arrange care for dependents and pets; then register the
+   death, mortuary choice + clock, hospital-bill-before-release, funeral
+   director, permits, notifying people, repatriation (one branch, if
+   cross-border).
+2. **Funeral (days–week):** burial vs cremation, venue, officiant and order of
+   service, casket, hearse, obituary/notices, coordinating contributions,
+   catering.
 3. **Admin / estate (weeks–months):** banks, insurers, benefits, utilities,
-   subscriptions, employer, government, estate.
+   subscriptions, creditors, employer, government, tax, estate.
+4. **Aftercare (months–year+):** the long tail almost no tool handles — closing
+   digital and social accounts, transferring the vehicle and property title,
+   personal effects, a headstone, memorials, and grief support for the living.
+
+The plan is **faith-aware** where it matters: an optional tradition (Muslim,
+Jewish, Hindu, Christian, secular) adds the right rites and pulls the funeral to
+its customary window — a Muslim or Jewish case compresses the service to about a
+day — so the agent never calmly batches something the family needed done today.
 
 Across every phase it follows one rule — **the agent runs autonomously and only
 surfaces when there's a real decision to make**:
@@ -62,19 +74,21 @@ where the person is laid to rest (Kenya, UK, US in this build; more are data).
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md). In short: a single Strands agent on
 Bedrock with six tools, backed by a **deterministic policy layer** that owns phase
-ordering, consequence tiers, the batch-vs-escalate rule, deadlines, and
-jurisdiction packs — so the safety-critical logic is code, not model output.
+ordering, consequence tiers, the batch-vs-escalate rule, deadlines,
+jurisdiction packs, and faith-aware urgency — so the safety-critical logic is
+code, not model output.
 
 ```
 umash/
 ├── umash/
 │   ├── policy/          # deterministic: phases, consequence tiers, jurisdiction packs,
-│   │                    #   case state machine, draft text — no model, no AWS
+│   │                    #   faith/culture urgency, case state machine, draft text
 │   ├── tools.py         # the six Strands @tool functions
 │   ├── session.py       # the batch-vs-escalate loop over a persistent case
 │   ├── cli.py           # the `umash` command (run your own case, no creds needed)
 │   ├── agent.py         # the Strands agent + escalation/approval loop
 │   └── data/            # synthetic demo profiles
+├── web/                 # static product UI (landing + case dashboard), no backend
 ├── demo.py              # runnable end-to-end demo (one cross-border scenario)
 ├── tests/               # policy + case-state + session tests (no creds needed)
 ├── pyproject.toml       # packaging; core has zero third-party deps
@@ -104,9 +118,23 @@ python demo.py --offline       # deterministic walkthrough, no Bedrock call (for
 ```
 
 The demo drives one scenario — *"My father passed in Nairobi; he lived in the
-UK"* — through all three phases: it lays out the jurisdiction-aware plan, runs the
-routine drafts quietly, and escalates the weighty decisions (hospital-bill release,
-repatriate vs bury) one at a time.
+UK"* — through all four phases: it lays out the jurisdiction-aware plan, runs the
+routine drafts quietly, and escalates the weighty decisions (organ donation,
+hospital-bill release, repatriate vs bury) one at a time.
+
+## See the product UI
+
+A static front end (no backend, no build step) lives in `web/`. Open it directly
+or serve the folder:
+
+```bash
+python3 -m http.server -d web 8000    # then visit http://localhost:8000
+```
+
+`index.html` is the landing page; `app.html` is the case dashboard — create a
+case, watch routine work batch into one approval, and resolve the weighty
+decisions one at a time. It mirrors the Python policy layer exactly, including
+the safety invariant, and persists cases to your browser's local storage.
 
 ## Use it on a real case (CLI)
 

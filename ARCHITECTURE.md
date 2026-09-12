@@ -34,13 +34,17 @@ cannot override.
                     │   DETERMINISTIC POLICY (umash/policy/)  │
                     │                                         │
                     │   phases.py       phase ordering +      │
-                    │                   task→phase routing    │
+                    │                   task→phase routing     │
+                    │                   (immediate · funeral · │
+                    │                    admin · aftercare)     │
                     │   consequence.py  ROUTINE vs WEIGHTY;    │
                     │                   the batch-vs-escalate  │
                     │                   rule (the safety core) │
                     │   jurisdictions.py  KE / UK / US packs   │
                     │                   as DATA + cross-border │
                     │                   repatriation branch    │
+                    │   faith.py        optional faith/culture │
+                    │                   urgency + rites (data) │
                     └───────────────────┬─────────────────────┘
                                         │
                                         ▼
@@ -68,9 +72,16 @@ model's phrasing or mood. So:
   WEIGHTY. Everything else is ROUTINE and gets batched. Deadlines drive
   *urgency ordering*, not escalation.
 - **`jurisdictions.py`** holds the country packs as data, so adding a country
-  never touches the agent. Cross-border cases prepend the repatriation branch.
-- **`phases.py`** orders the journey (immediate → funeral → admin) and routes
-  free-text tasks to a phase.
+  never touches the agent. Each pack now spans the whole arc — the moment of
+  death (pronouncement, organ-donation clock, locating the will, care for
+  dependents), the funeral in detail, estate admin, and the aftercare tail
+  (digital accounts, property transfer, memorials, grief support). Cross-border
+  cases prepend the repatriation branch.
+- **`phases.py`** orders the journey (immediate → funeral → admin → aftercare)
+  and routes free-text tasks to a phase.
+- **`faith.py`** optionally adjusts the *timing* and rites to the family's
+  tradition (e.g. a Muslim or Jewish case pulls the service to ~24 hours),
+  as data. With no faith given, nothing is imposed.
 
 The agent (`agent.py`) composes these via the six tools. `run_offline()` walks
 the same policy with no model call, which is how the demo and tests prove the
@@ -81,13 +92,17 @@ core behavior without AWS creds.
 Profile: *father died in Nairobi (KE), to be laid to rest in the UK.*
 
 1. `build_journey_plan("KE","UK")` → cross-border detected → repatriation branch
-   prepended → 18 tasks across three phases.
-2. Each task → `classify_consequence` → 13 routine, 5 weighty.
-3. Routine 13 → batched into one approval.
-4. Weighty 5, ordered by urgency → surfaced one at a time:
-   hospital-bill-release (2d), repatriate-vs-bury (3d), embassy paperwork,
-   estate succession, NSSF survivor benefit (30d).
+   prepended → 39 tasks across four phases.
+2. Each task → `classify_consequence` → 31 routine, 8 weighty.
+3. Routine 31 → batched into one approval.
+4. Weighty 8, ordered by urgency → surfaced one at a time:
+   organ donation (1d), hospital-bill-release (2d), repatriate-vs-bury (3d),
+   NSSF survivor benefit (30d), start succession, estate succession, vehicle
+   and property title transfers.
 5. Nothing is executed. Every weighty step waits for the human.
+
+   (With a faith given — say Muslim — three rites are added and the funeral is
+   pulled to a ~24-hour window, so the plan reorders to match the tradition.)
 
 ## Deployment
 
