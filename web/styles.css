@@ -116,18 +116,19 @@ body {
   padding: var(--spacing-10) var(--spacing-18); border: 1px solid transparent;
   cursor: pointer; text-decoration: none; display: inline-flex;
   align-items: center; justify-content: center; gap: var(--spacing-8);
-  transition: opacity 120ms ease, background 120ms ease;
+  transition: opacity 140ms ease, background 140ms ease, transform 140ms ease, box-shadow 200ms ease;
   white-space: nowrap; line-height: 1.2;
 }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:not(:disabled):active { transform: scale(0.97); }
 
 /* Filled dark — primary on light/frost surfaces */
 .btn--ink { background: var(--color-ink-black); color: var(--color-paper-white); }
 .btn--ink:not(:disabled):hover { opacity: 0.85; }
 
-/* Accent lime — ONLY on ink-black surfaces (per DESIGN.md) */
+/* Accent lime — ONLY on ink-black surfaces (per DESIGN.md). Subtle glow on hover. */
 .btn--lime { background: var(--color-electric-lime); color: var(--color-ink-black); }
-.btn--lime:not(:disabled):hover { opacity: 0.85; }
+.btn--lime:not(:disabled):hover { box-shadow: 0 0 0 4px rgba(205,254,0,0.25); }
 
 /* Ghost / white — on dark cards (white outline) */
 .btn--ghost-dark { background: transparent; color: var(--color-paper-white); border-color: var(--color-paper-white); }

@@ -144,42 +144,56 @@
       const done = tasks.filter(t => c.isResolved(t)).length;
       const decisions = tasks.filter(t => t.weighty && !c.isResolved(t));
       const routine = tasks.filter(t => !t.weighty);
+      const isOpen = (openPhase === phase);
 
-      const details = el("details", "phase");
-      details.open = (openPhase === phase);
-      details.addEventListener("toggle", () => {
-        if (details.open) { openPhase = phase; renderPhases(c); }
-        else if (openPhase === phase) { openPhase = null; }
-      });
+      const section = el("section", "phase" + (isOpen ? " open" : ""));
 
-      // summary row
-      const sum = el("summary", "phase__summary");
+      // summary row — a real button for keyboard + screen readers
+      const sum = el("div", "phase__summary");
+      sum.setAttribute("role", "button");
+      sum.tabIndex = 0;
+      sum.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      const bodyId = `phase-body-${phase}`;
+      sum.setAttribute("aria-controls", bodyId);
       const icon = el("span", "phase__icon"); icon.innerHTML = PHASE_ART[phase] || "";
       sum.appendChild(icon);
       sum.appendChild(el("span", "phase__name", esc(PHASE_LABEL[phase].split("—")[0].trim())));
       const bar = el("span", "phase__bar");
       const fill = el("span"); fill.style.width = `${Math.round(100 * done / tasks.length)}%`;
       bar.appendChild(fill); sum.appendChild(bar);
-      // quiet meta: decisions first (the thing that matters), then routine count
       const parts = [];
       if (decisions.length) parts.push(`${decisions.length} decision${decisions.length === 1 ? "" : "s"}`);
       if (routine.length) parts.push(`${routine.length} routine`);
       parts.push(`${done}/${tasks.length} done`);
       sum.appendChild(el("span", "phase__meta", parts.join(" · ")));
       sum.appendChild(chevron());
-      details.appendChild(sum);
+      section.appendChild(sum);
 
-      // body (only rendered/visible when open)
-      const body = el("div", "phase__body");
-      // decisions get their own rows
-      decisions.forEach(t => body.appendChild(renderDecision(t)));
-      // any resolved weighty (show quietly so the record is complete)
-      tasks.filter(t => t.weighty && c.isResolved(t)).forEach(t => body.appendChild(renderDecision(t)));
-      // routine folded into one quiet group
-      if (routine.length) body.appendChild(renderRoutineGroup(routine));
-      details.appendChild(body);
+      // body (always in the DOM so it can animate; collapsed via grid-rows)
+      const body = el("div", "phase__body"); body.id = bodyId;
+      const inner = el("div", "phase__bodyInner");
+      decisions.forEach(t => inner.appendChild(renderDecision(t)));
+      tasks.filter(t => t.weighty && c.isResolved(t)).forEach(t => inner.appendChild(renderDecision(t)));
+      if (routine.length) inner.appendChild(renderRoutineGroup(routine));
+      body.appendChild(inner);
+      section.appendChild(body);
 
-      wrap.appendChild(details);
+      const toggle = () => {
+        const nowOpen = !section.classList.contains("open");
+        // accordion: close the others, open this one
+        wrap.querySelectorAll(".phase.open").forEach(p => {
+          if (p !== section) { p.classList.remove("open"); p.querySelector(".phase__summary").setAttribute("aria-expanded", "false"); }
+        });
+        section.classList.toggle("open", nowOpen);
+        sum.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        openPhase = nowOpen ? phase : null;
+      };
+      sum.addEventListener("click", toggle);
+      sum.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+      });
+
+      wrap.appendChild(section);
     }
   }
 
@@ -235,26 +249,39 @@
   function renderRoutineGroup(routine) {
     const c = current;
     const pending = routine.filter(t => !c.isResolved(t));
-    const details = el("details", "routine-group");
-    const head = el("summary", "routine-group__head");
+    const group = el("div", "routine-group");
+    const head = el("div", "routine-group__head");
+    head.setAttribute("role", "button");
+    head.tabIndex = 0;
+    head.setAttribute("aria-expanded", "false");
     const label = pending.length
       ? frag(`<b>${pending.length}</b> routine task${pending.length === 1 ? "" : "s"} prepared, batched for one approval`)
       : frag(`<b>${routine.length}</b> routine task${routine.length === 1 ? "" : "s"} — all approved`);
     head.appendChild(label);
     head.appendChild(chevron());
-    details.appendChild(head);
+    group.appendChild(head);
 
+    const body = el("div", "routine-group__body");
     const list = el("div", "routine-group__list");
     routine.forEach(t => {
       const item = el("div", "routine-item");
-      const dot = el("span", `dot dot--${t.status}`);
-      item.appendChild(dot);
+      item.appendChild(el("span", `dot dot--${t.status}`));
       item.appendChild(el("span", null, esc(t.title)));
       item.appendChild(el("span", "routine-item__target", esc(t.target)));
       list.appendChild(item);
     });
-    details.appendChild(list);
-    return details;
+    body.appendChild(list);
+    group.appendChild(body);
+
+    const toggle = () => {
+      const open = group.classList.toggle("open");
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    head.addEventListener("click", toggle);
+    head.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+    return group;
   }
 
   // ---------------------------------------------------------------- batch
