@@ -45,10 +45,13 @@ _MONEY = ["settle the bill", "hospital bill", "pay ", "deposit", "wire",
           "transfer funds", "release funds", "payout"]
 _LEGAL = ["sign for", "authorize", "authorise", "power of attorney",
           "probate", "estate filing", "estate succession", "begin estate",
-          "succession", "affidavit", "notarize", "executor"]
+          "succession", "affidavit", "notarize", "executor",
+          "title transfer", "transfer title", "transfer property title",
+          "transfer the house", "retitle"]
 _IRREVERSIBLE = ["release the body", "sign for the body", "repatriate vs",
                  "repatriate to", "cremate", "post-mortem", "autopsy",
-                 "close the account permanently", "donate organs"]
+                 "close the account permanently", "donate organs",
+                 "organ or tissue donation", "organ donation", "tissue donation"]
 _TIME_CRITICAL = ["time-critical", "before release", "expires"]
 
 # Benefit/claim actions are weighty (money inflow with a filing decision), but

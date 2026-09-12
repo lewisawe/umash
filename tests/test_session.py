@@ -18,9 +18,12 @@ from umash.session import Session, auto_decider, Decision
 def test_build_case_classifies_and_counts():
     c = build_case("t", "KE", "UK", "my father")
     assert c.cross_border is True
-    assert len(c.tasks()) == 18
-    assert len(c.routine()) == 13
-    assert len(c.weighty()) == 5
+    # counts are derived from the packs, not hardcoded, so the test stays
+    # correct as coverage grows; the invariant is routine + weighty == total.
+    assert len(c.tasks()) == len(c.routine()) + len(c.weighty())
+    assert len(c.tasks()) > 30            # full-journey pack, not a stub
+    assert len(c.weighty()) >= 5          # genuine decisions are surfaced
+    assert len(c.routine()) > len(c.weighty())   # most work is routine + batched
 
 
 def test_weighty_needs_decision_before_approval():
@@ -42,8 +45,9 @@ def test_routine_batch_approves_without_decision():
     c = build_case("t", "KE", "UK", "x")
     s = Session(c)
     s.prepare_routine()
+    expected = len(c.routine())
     n = s.approve_routine_batch()
-    assert n == 13
+    assert n == expected
     assert all(t.status is Status.APPROVED for t in c.routine())
 
 
@@ -61,12 +65,42 @@ def test_escalations_ordered_by_urgency():
 
 def test_full_session_flow_resolves_everything():
     s = Session.new("t", "KE", "UK", "my father")
+    expected_routine = len(s.case.routine())
+    expected_weighty = len(s.case.weighty())
     out = s.run(auto_decider)
-    assert out["routine_prepared"] == 13
-    assert out["routine_approved"] == 13
-    assert len(out["escalations"]) == 5
+    assert out["routine_prepared"] == expected_routine
+    assert out["routine_approved"] == expected_routine
+    assert len(out["escalations"]) == expected_weighty
     assert all(e["outcome"] == "approved" for e in out["escalations"])
     assert out["summary"]["pending_escalations"] == 0
+
+
+def test_full_journey_covers_all_four_phases():
+    from umash.policy.phases import PHASE_ORDER
+    c = build_case("t", "KE", "UK", "my father")
+    titles = [t.title.lower() for t in c.tasks()]
+    phases_present = {t.phase for t in c.tasks()}
+    # every phase in the journey is populated, not just the acute ones
+    assert phases_present == {p.value for p in PHASE_ORDER}
+    # moment-of-death coverage (Stage 0)
+    assert any("pronouncement of death" in t for t in titles)
+    assert any("organ or tissue donation" in t for t in titles)
+    assert any("locate the will" in t for t in titles)
+    assert any("dependents and pets" in t for t in titles)
+    # aftercare long tail
+    assert any("digital and social media" in t for t in titles)
+    assert any("headstone" in t for t in titles)
+    assert any("grief and bereavement" in t for t in titles)
+
+
+def test_organ_donation_and_title_transfer_are_weighty():
+    from umash.policy.consequence import classify
+    assert classify("Decide on organ or tissue donation").escalates
+    assert classify("Transfer property title / update the home").escalates
+    assert classify("Transfer or sell the vehicle (title transfer)").escalates
+    # routine logistics must NOT escalate
+    assert not classify("Arrange catering and the reception").escalates
+    assert not classify("Find grief and bereavement support").escalates
 
 
 def test_decline_records_and_resolves():
