@@ -21,29 +21,33 @@ only exposes the agent over the runtime contract.
 ## Prerequisites
 
 - AWS credentials with Bedrock **invoke** access and AgentCore permissions.
+  This project uses the `simi-ops` profile in `us-east-1` (account
+  `888577033943`), which already has Bedrock, ECR, and AgentCore access.
 - An IAM execution role for the runtime (see the AgentCore IAM docs).
 - Docker with `buildx` (AgentCore images must be `linux/arm64`).
-- Region with AgentCore + your chosen model (default `us-east-1`,
+- Region with AgentCore + your chosen model (`us-east-1`,
   `us.amazon.nova-pro-v1:0`; override with `AWS_REGION` / `UMASH_MODEL_ID`).
+- Optional: a Bedrock Guardrail — create it with
+  `python scripts/create_guardrail.py --profile simi-ops` and pass its id via
+  `UMASH_GUARDRAIL_ID` (baked into the runtime env or set at build).
+
+All commands below assume `--profile simi-ops` and `us-east-1`.
 
 ## Option A — Starter toolkit (simplest)
 
 ```bash
-pip install bedrock-agentcore-starter-toolkit
+export AWS_PROFILE=simi-ops AWS_REGION=us-east-1
 ```
 
 ```python
 from bedrock_agentcore_starter_toolkit import Runtime
-from boto3.session import Session
-
-region = Session().region_name or "us-east-1"
 rt = Runtime()
 rt.configure(
     entrypoint="deploy/agentcore_app.py",
     requirements_file="deploy/requirements.txt",
     auto_create_execution_role=True,
     auto_create_ecr=True,
-    region=region,
+    region="us-east-1",
     agent_name="umash",
 )
 rt.launch()      # builds the ARM64 image, pushes to ECR, creates the runtime
@@ -54,6 +58,10 @@ rt.launch()      # builds the ARM64 image, pushes to ECR, creates the runtime
 Run from the repository root so the build context includes `umash/`.
 
 ```bash
+PROFILE=simi-ops
+REGION=us-east-1
+ACCOUNT=$(aws sts get-caller-identity --profile "$PROFILE" --query Account --output text)  # 888577033943
+
 # 1. Build for ARM64
 docker buildx create --use
 docker buildx build --platform linux/arm64 -f deploy/Dockerfile -t umash:arm64 --load .
@@ -61,16 +69,14 @@ docker buildx build --platform linux/arm64 -f deploy/Dockerfile -t umash:arm64 -
 # 2. (optional) test locally — needs AWS creds for Bedrock
 docker run --platform linux/arm64 -p 8080:8080 \
   -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
-  -e AWS_REGION="${AWS_REGION:-us-east-1}" umash:arm64 &
+  -e AWS_REGION="$REGION" umash:arm64 &
 curl localhost:8080/ping
 curl -X POST localhost:8080/invocations -H 'Content-Type: application/json' \
   -d '{"prompt":"My father passed in Nairobi; he lived in the UK. Where do I start?"}'
 
 # 3. Push to ECR
-ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-REGION=${AWS_REGION:-us-east-1}
-aws ecr create-repository --repository-name umash --region "$REGION" || true
-aws ecr get-login-password --region "$REGION" | \
+aws ecr create-repository --repository-name umash --region "$REGION" --profile "$PROFILE" || true
+aws ecr get-login-password --region "$REGION" --profile "$PROFILE" | \
   docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
 docker buildx build --platform linux/arm64 -f deploy/Dockerfile \
   -t "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/umash:latest" --push .
