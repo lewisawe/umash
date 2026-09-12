@@ -18,6 +18,16 @@
   const STATUS_LABEL = { pending: "Pending", drafted: "Drafted", approved: "Approved",
                          sent: "Sent", confirmed: "Confirmed", declined: "Declined" };
 
+  // Small, dignified per-phase line art (ink line, single lime accent).
+  // dawn = immediate · candle = funeral · letter = admin · sprig = aftercare.
+  const _svg = (inner) => `<svg viewBox="0 0 32 32" width="26" height="26" fill="none" aria-hidden="true">${inner}</svg>`;
+  const PHASE_ART = {
+    immediate: _svg('<circle cx="16" cy="20" r="7" fill="#cdfe00"/><line x1="3" y1="20" x2="29" y2="20" stroke="#0a1217" stroke-width="1.5"/>'),
+    funeral:   _svg('<rect x="13" y="14" width="6" height="12" rx="2" fill="none" stroke="#0a1217" stroke-width="1.5"/><path d="M16 14c3-2 3-6 0-8-3 2-3 6 0 8z" fill="#cdfe00"/>'),
+    admin:     _svg('<rect x="6" y="10" width="20" height="14" rx="3" fill="none" stroke="#0a1217" stroke-width="1.5"/><path d="M6 12l10 7 10-7" stroke="#0a1217" stroke-width="1.5" fill="none"/>'),
+    aftercare: _svg('<line x1="16" y1="27" x2="16" y2="12" stroke="#0a1217" stroke-width="1.5"/><path d="M16 17c-3-1-5 0-7-2M16 14c3-1 5-1 7-3" stroke="#0a1217" stroke-width="1.5" stroke-linecap="round"/><circle cx="21" cy="10" r="2.5" fill="#cdfe00"/>'),
+  };
+
   // ---------------------------------------------------------------- views
   function show(view) {
     ["view-create", "view-dash", "view-cases"].forEach(v => $(v).hidden = (v !== view));
@@ -87,6 +97,9 @@
       if (!tasks.length) continue;
       const group = el("section", "phase");
       const label = el("div", "phase__label");
+      const icon = el("span", "phase__icon");
+      icon.innerHTML = PHASE_ART[phase] || "";
+      label.appendChild(icon);
       label.appendChild(el("h2", null, esc(PHASE_LABEL[phase])));
       const done = tasks.filter(t => c.isResolved(t)).length;
       label.appendChild(el("span", "phase__count", `${done} / ${tasks.length} resolved`));
@@ -94,6 +107,7 @@
       tasks.forEach(t => group.appendChild(renderTask(t)));
       wrap.appendChild(group);
     }
+    if (window.Umash.wireImages) window.Umash.wireImages();
   }
 
   function renderTask(t) {

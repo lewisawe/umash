@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Umash — Case</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="imagery.css">
 <style>
   .app { padding-bottom: var(--section-gap); }
 
@@ -33,6 +34,7 @@
   /* phase groups */
   .phase { margin-top: var(--spacing-32); }
   .phase__label { display: flex; align-items: baseline; gap: var(--spacing-12); margin-bottom: var(--spacing-16); }
+  .phase__icon { align-self: center; flex: none; line-height: 0; }
   .phase__label h2 { font-size: var(--text-heading); font-weight: var(--fw-medium); }
   .phase__count { color: var(--color-stone-gray); font-size: var(--text-caption); }
 
@@ -93,6 +95,17 @@
   <!-- CREATE CASE -->
   <section id="view-create" class="create" hidden>
     <h1 class="hero-headline">Open a case.</h1>
+    <div class="media media--wide" role="img" aria-label="A calm horizon at first light" style="margin-bottom:var(--spacing-24)">
+      <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:100%;height:100%">
+        <rect width="800" height="300" fill="#e4eff7"/>
+        <circle cx="400" cy="215" r="70" fill="#cdfe00" opacity="0.9"/>
+        <line x1="0" y1="215" x2="800" y2="215" stroke="#0a1217" stroke-width="1.5"/>
+        <path d="M90 215c60-8 110-6 170 2s120 8 200-2 130-8 210 0" stroke="#0a1217" stroke-width="1.5" opacity="0.35" fill="none"/>
+      </svg>
+      <img class="media__photo" alt=""
+           src="https://images.unsplash.com/photo-1504198453319-5ce911bafcde?auto=format&fit=crop&w=1600&q=70"
+           referrerpolicy="no-referrer">
+    </div>
     <div class="card card--frost stack-16">
       <div class="field">
         <label for="f-name">Who has passed away?</label>
@@ -204,5 +217,6 @@
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script src="imagery.js"></script>
 </body>
 </html>

@@ -1,0 +1,58 @@
+/* ============================================================================
+   Umash — imagery layer
+   Adds dignified, documentary-register photography on top of an always-present
+   on-brand base (frost + inline SVG). If a photo fails to load (offline, blocked),
+   the base shows through, so the app is never broken and never text-only.
+
+   Photographs are quiet and natural per DESIGN.md's imagery guidance
+   (documentary, not lifestyle-stock; no morbid or literal death imagery).
+   Sources are license-free (Unsplash). Flat, no shadows, 24px radius.
+   ========================================================================== */
+
+/* A framed media block: SVG/frost base underneath, optional photo on top. */
+.media {
+  position: relative;
+  border-radius: var(--radius-cards);
+  overflow: hidden;
+  background: var(--color-frost-wash);
+}
+.media svg { display: block; width: 100%; height: auto; }
+
+/* The photo sits above the SVG and fades in only if it actually loads. */
+.media__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.media__photo.loaded { opacity: 1; }
+
+/* A subtle ink wash so any overlaid text stays legible on a photo. */
+.media--wash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10,18,23,0) 40%, rgba(10,18,23,0.45) 100%);
+  pointer-events: none;
+}
+
+/* Hero band on the landing page. */
+.hero-media {
+  margin-top: var(--spacing-32);
+  aspect-ratio: 20 / 7;
+}
+.hero-media svg { height: 100%; object-fit: cover; }
+
+/* Small square supports (app phase art, empty states). */
+.media--square { aspect-ratio: 1 / 1; }
+.media--wide   { aspect-ratio: 16 / 9; }
+
+/* A caption credit, quiet per the type system. */
+.media__credit {
+  font-size: var(--text-caption);
+  color: var(--color-stone-gray);
+  margin-top: var(--spacing-8);
+}

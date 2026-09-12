@@ -1,0 +1,53 @@
+<!--
+  Umash imagery — inline SVG illustrations.
+  Dignified, quiet line art in the Sana system: ink line on frost/paper,
+  a single restrained lime accent, flat, no shadows, 24px-friendly framing.
+  Documentary-register motifs (dawn horizon, a held hand, a candle, a tree,
+  a folded letter) rather than anything morbid. These always render offline;
+  photographic sources are layered on top with graceful fallback in imagery.css.
+
+  This file is a reference library — the markup is copied inline where used so
+  each page stays self-contained. Kept here for maintenance.
+-->
+
+<!-- HERO: dawn over a horizon — the morning after -->
+<svg id="art-dawn" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A quiet dawn over a horizon">
+  <rect width="800" height="360" fill="#e4eff7"/>
+  <circle cx="400" cy="250" r="86" fill="#cdfe00" opacity="0.9"/>
+  <line x1="0" y1="250" x2="800" y2="250" stroke="#0a1217" stroke-width="1.5"/>
+  <path d="M120 250c40-8 70-6 110 2s70 10 120 2 90-14 140-6 110 12 190 2" stroke="#0a1217" stroke-width="1.5" opacity="0.4"/>
+  <path d="M60 250c30-4 40 0 60 3" stroke="#0a1217" stroke-width="1.5" opacity="0.25"/>
+</svg>
+
+<!-- SUPPORT: two hands, one holding the other -->
+<svg id="art-hands" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One hand holding another">
+  <rect width="200" height="200" rx="24" fill="#e4eff7"/>
+  <path d="M60 120c-6-20 2-40 14-46 6 22 22 30 40 30" stroke="#0a1217" stroke-width="2" stroke-linecap="round"/>
+  <path d="M138 96c10 6 16 20 10 36-8 20-30 30-52 26-16-3-28-14-32-30" stroke="#0a1217" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="112" cy="104" r="5" fill="#cdfe00"/>
+</svg>
+
+<!-- CANDLE: a small steady flame -->
+<svg id="art-candle" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single lit candle">
+  <rect width="200" height="200" rx="24" fill="#0a1217"/>
+  <rect x="88" y="96" width="24" height="70" rx="6" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <line x1="100" y1="96" x2="100" y2="78" stroke="#ffffff" stroke-width="2"/>
+  <path d="M100 78c8-6 8-18 0-26-8 8-8 20 0 26z" fill="#cdfe00"/>
+</svg>
+
+<!-- TREE: continuity, growth after loss -->
+<svg id="art-tree" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single tree">
+  <rect width="200" height="200" rx="24" fill="#e4eff7"/>
+  <line x1="100" y1="170" x2="100" y2="96" stroke="#0a1217" stroke-width="2"/>
+  <path d="M100 120c-14-6-24-4-34-12M100 110c14-6 24-6 36-16M100 132c-10-2-18 0-26-6" stroke="#0a1217" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="100" cy="80" r="30" fill="none" stroke="#0a1217" stroke-width="2"/>
+  <circle cx="112" cy="72" r="4" fill="#cdfe00"/>
+</svg>
+
+<!-- LETTER: a prepared note, waiting -->
+<svg id="art-letter" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A folded letter">
+  <rect width="200" height="200" rx="24" fill="#e4eff7"/>
+  <rect x="52" y="66" width="96" height="68" rx="8" fill="#ffffff" stroke="#0a1217" stroke-width="2"/>
+  <path d="M52 74l48 34 48-34" stroke="#0a1217" stroke-width="2" fill="none"/>
+  <circle cx="148" cy="66" r="6" fill="#cdfe00"/>
+</svg>
