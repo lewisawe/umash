@@ -25,20 +25,25 @@ from .policy.phases import PHASE_LABEL, Phase
 
 
 @tool
-def build_journey_plan(died_in: str, rest_in: str = "") -> str:
+def build_journey_plan(died_in: str, rest_in: str = "", faith: str = "") -> str:
     """Build the full phased task plan for a death, adapted to jurisdiction.
 
     Args:
         died_in: ISO-ish country code where the death occurred (KE, UK, US).
         rest_in: country code where the person will be laid to rest. If it
             differs from died_in, cross-border repatriation steps are added.
+        faith: optional tradition (muslim, jewish, hindu, christian, secular).
+            When given, it adds the tradition's rites and pulls the funeral to
+            its customary window (e.g. Muslim/Jewish ~1 day). Omit to impose
+            nothing.
 
     Returns:
         JSON: {phases: [{phase, label, tasks: [{title, target, deadline_days,
-        consequence, escalates, note}]}]}, tasks grouped and ordered by phase.
+        consequence, escalates, note}]}]}, tasks grouped and ordered by phase
+        (immediate, funeral, admin, aftercare).
     """
     rest = rest_in.strip() or None
-    tasks = tasks_for(died_in, rest)
+    tasks = tasks_for(died_in, rest, faith.strip() or None)
 
     grouped: dict[str, list[dict]] = {p.value: [] for p in Phase}
     for t in tasks:
