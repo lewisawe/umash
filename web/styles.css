@@ -13,6 +13,10 @@
   --color-stone-gray: #85898b;
   --color-obsidian: #000000;
   --color-electric-lime: #cdfe00;
+  /* Accessible muted text for SMALL on-surface labels/body. Stone-gray (#85898b)
+     is ~2.9:1 on white — fine for large/decorative text, but fails WCAG AA for
+     small text, so small secondary copy uses this darker slate (~5.9:1). */
+  --color-muted-ink: #55606a;
 
   /* Fonts — DESIGN.md substitutes: Source Serif 4 (400) + Inter */
   --font-sana-serif: 'Source Serif 4', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
@@ -53,6 +57,23 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+
+/* Visible keyboard focus everywhere — never remove the outline, only refine it. */
+:focus-visible {
+  outline: 2px solid var(--color-ink-black);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.btn--lime:focus-visible, .btn--ghost-dark:focus-visible { outline-color: var(--color-electric-lime); }
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 body {
   font-family: var(--font-sana-sans);
@@ -147,7 +168,7 @@ select.input { appearance: none; background-image:
   color: var(--color-stone-gray); text-align: left;
 }
 .heading { font-size: var(--text-heading); font-weight: var(--fw-medium); line-height: var(--leading-heading); }
-.muted { color: var(--color-stone-gray); }
+.muted { color: var(--color-muted-ink); }
 
 /* --------------------------------------------------------------- Pills / tags */
 .tag {
