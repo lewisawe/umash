@@ -1,0 +1,7 @@
+# Amazon Bedrock AgentCore Runtime dependencies for Umash.
+# The deterministic core (umash.policy, session, cli) needs none of these;
+# they are only for the conversational agent behind the runtime.
+
+bedrock-agentcore
+strands-agents==1.53.0
+boto3>=1.35.0
