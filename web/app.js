@@ -176,20 +176,43 @@
   }
 
   // ---------------------------------------------- escalation flow (queue)
+  let lastFocused = null;   // element to restore focus to when the modal closes
+
+  function openModal() {
+    lastFocused = document.activeElement;
+    const scrim = $("scrim");
+    scrim.hidden = false;
+    scrim.classList.add("open");
+    document.addEventListener("keydown", trapFocus, true);
+  }
+
   function startEscalations() {
     queue = current.pendingEscalations().map(t => t.id);
     queueIndex = 0;
     if (!queue.length) return;
+    openModal();
     renderModal();
-    $("scrim").classList.add("open");
   }
 
   function openEscalationFor(id) {
     // review a single decision, but keep the "most urgent first" queue behind it
     queue = current.pendingEscalations().map(t => t.id);
     queueIndex = Math.max(0, queue.indexOf(id));
+    openModal();
     renderModal();
-    $("scrim").classList.add("open");
+  }
+
+  // Keep Tab focus inside the dialog while it is open.
+  function trapFocus(e) {
+    if (e.key !== "Tab") return;
+    const scrim = $("scrim");
+    if (scrim.hidden) return;
+    const focusable = scrim.querySelectorAll(
+      'button:not([disabled]), input, [href], [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   function renderModal() {
@@ -236,7 +259,14 @@
     $("m-skip").onclick = () => { queueIndex++; renderModal(); if (queueIndex >= queue.length) renderDash(); };
   }
 
-  function closeModal() { $("scrim").classList.remove("open"); }
+  function closeModal() {
+    const scrim = $("scrim");
+    scrim.classList.remove("open");
+    scrim.hidden = true;
+    document.removeEventListener("keydown", trapFocus, true);
+    if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+    lastFocused = null;
+  }
 
   // ---------------------------------------------------------------- cases
   function renderCases() {
@@ -272,7 +302,10 @@
   $("btn-new-nav").onclick = () => show("view-create");
   $("link-cases").onclick = (e) => { e.preventDefault(); renderCases(); show("view-cases"); };
   $("scrim").onclick = (e) => { if (e.target === $("scrim")) closeModal(); };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  $("m-close").onclick = closeModal;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("scrim").hidden) closeModal();
+  });
 
   // boot: last case if any, else create
   const ids = Store.ids();
