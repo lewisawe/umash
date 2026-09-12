@@ -28,3 +28,6 @@ htmlcov/
 *.swp
 .idea/
 .vscode/
+
+# Local handoff note (never publish)
+PROGRESS.md
