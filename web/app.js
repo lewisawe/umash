@@ -28,6 +28,14 @@
     aftercare: _svg('<line x1="16" y1="27" x2="16" y2="12" stroke="#0a1217" stroke-width="1.5"/><path d="M16 17c-3-1-5 0-7-2M16 14c3-1 5-1 7-3" stroke="#0a1217" stroke-width="1.5" stroke-linecap="round"/><circle cx="21" cy="10" r="2.5" fill="#cdfe00"/>'),
   };
 
+  // Inline clock icon (not an emoji — emojis render inconsistently and aren't
+  // controllable design tokens). aria-hidden; the text beside it carries meaning.
+  const CLOCK = '<svg class="clock" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+  function deadlineText(days) {
+    return `due in ${days} day${days === 1 ? "" : "s"}`;
+  }
+
   // ---------------------------------------------------------------- views
   function show(view) {
     ["view-create", "view-dash", "view-cases"].forEach(v => $(v).hidden = (v !== view));
@@ -79,6 +87,39 @@
         metrics.appendChild(m);
       });
     $("rail").style.width = s.total ? `${Math.round(100 * s.resolved / s.total)}%` : "0%";
+
+    // next-best-action / completion affirmation
+    const slot = $("focus-slot"); slot.innerHTML = "";
+    const unresolved = c.tasks.filter(t => !c.isResolved(t));
+    if (unresolved.length === 0) {
+      // Everything is resolved — a quiet, grief-appropriate affirmation.
+      const done = el("div", "done-state");
+      done.appendChild(el("h3", null, "You've done everything for now."));
+      done.appendChild(el("p", null,
+        `Every step for ${esc(c.name)} has been handled or decided. There is nothing waiting on you. Rest.`));
+      slot.appendChild(done);
+    } else {
+      // Point to the single most urgent thing: soonest-deadline pending decision,
+      // else the soonest-deadline routine task.
+      const byUrgency = (a, b) => (a.deadlineDays ?? 1e6) - (b.deadlineDays ?? 1e6);
+      const nextDecision = c.pendingEscalations()[0];
+      const next = nextDecision ||
+        unresolved.slice().sort(byUrgency)[0];
+      if (next) {
+        const na = el("div", "next-action");
+        const txt = el("div", "grow");
+        txt.appendChild(el("div", "next-action__label",
+          nextDecision ? "Your most urgent decision" : "A good next step"));
+        txt.appendChild(el("div", "next-action__title", esc(next.title)));
+        na.appendChild(txt);
+        if (nextDecision) {
+          const b = el("button", "btn btn--ink btn--sm", "Review it");
+          b.onclick = () => openEscalationFor(next.id);
+          na.appendChild(b);
+        }
+        slot.appendChild(na);
+      }
+    }
 
     // batch bar — visible only while routine work is unapproved
     const routinePending = c.routine().filter(t => !c.isResolved(t));
@@ -134,8 +175,9 @@
     // deadline
     if (t.deadlineDays != null) {
       const soon = t.deadlineDays <= 3;
-      tags.appendChild(el("span", `deadline${soon ? " deadline--soon" : ""}`,
-        `⏱ due in ${t.deadlineDays} day${t.deadlineDays === 1 ? "" : "s"}`));
+      const pill = el("span", `deadline${soon ? " deadline--soon" : ""}`,
+        `${CLOCK} ${deadlineText(t.deadlineDays)}`);
+      tags.appendChild(pill);
     }
     left.appendChild(tags);
     top.appendChild(left);
@@ -227,7 +269,7 @@
     $("m-target").textContent = `Directed at ${t.target}`;
     const dl = $("m-deadline");
     if (t.deadlineDays != null) {
-      dl.textContent = `⏱ due in ${t.deadlineDays} day${t.deadlineDays === 1 ? "" : "s"}`;
+      dl.innerHTML = `${CLOCK} ${deadlineText(t.deadlineDays)}`;
       dl.className = "deadline" + (t.deadlineDays <= 3 ? " deadline--soon" : "");
     } else { dl.textContent = "no fixed deadline"; dl.className = "deadline muted"; }
 
@@ -287,7 +329,19 @@
       const open = el("button", "btn btn--ink btn--sm", "Open");
       open.onclick = () => { current = c; renderDash(); show("view-dash"); };
       const del = el("button", "btn btn--ghost-light btn--sm", "Delete");
-      del.onclick = () => { Store.remove(id); renderCases(); };
+      del.setAttribute("aria-label", `Delete the case for ${c.name}`);
+      del.onclick = () => {
+        // Two-step confirm — deleting a case is destructive with no undo.
+        if (del.dataset.confirm === "1") { Store.remove(id); renderCases(); return; }
+        del.dataset.confirm = "1";
+        del.textContent = "Confirm delete";
+        del.classList.add("btn--danger");
+        clearTimeout(del._t);
+        del._t = setTimeout(() => {
+          del.dataset.confirm = ""; del.textContent = "Delete";
+          del.classList.remove("btn--danger");
+        }, 3500);
+      };
       actions.appendChild(open); actions.appendChild(del);
       top.appendChild(actions);
       card.appendChild(top);

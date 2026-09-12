@@ -137,6 +137,9 @@ body {
 
 .btn--sm { padding: var(--spacing-6) var(--spacing-16); font-size: var(--text-caption); }
 .btn--full { width: 100%; }
+/* Destructive confirm state (two-step delete). Red is functional, not brand. */
+.btn--danger { background: #b91c1c; color: #ffffff; border-color: #b91c1c; }
+.btn--danger:not(:disabled):hover { background: #a31717; }
 
 /* -------------------------------------------------------------- Inputs */
 .input {
