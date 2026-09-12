@@ -15,9 +15,6 @@
   let queue = [];              // escalation queue (task ids)
   let queueIndex = 0;
 
-  const STATUS_LABEL = { pending: "Pending", drafted: "Drafted", approved: "Approved",
-                         sent: "Sent", confirmed: "Confirmed", declined: "Declined" };
-
   // Small, dignified per-phase line art (ink line, single lime accent).
   // dawn = immediate · candle = funeral · letter = admin · sprig = aftercare.
   const _svg = (inner) => `<svg viewBox="0 0 32 32" width="26" height="26" fill="none" aria-hidden="true">${inner}</svg>`;
@@ -65,6 +62,8 @@
   }
 
   // ---------------------------------------------------------------- dash
+  let openPhase = null;   // which phase is expanded (one at a time); null = all collapsed
+
   function renderDash() {
     const c = current;
     const restName = JURISDICTION_NAME[c.restIn];
@@ -73,139 +72,189 @@
     const meta = $("case-meta"); meta.innerHTML = "";
     meta.appendChild(el("span", null, `Died in ${esc(diedName)}`));
     meta.appendChild(el("span", null, `Laid to rest in ${esc(restName)}`));
-    if (c.crossBorder) meta.appendChild(el("span", null, `Cross-border · repatriation ${esc(diedName)} → ${esc(restName)}`));
+    if (c.crossBorder) meta.appendChild(el("span", null, `repatriation ${esc(diedName)} → ${esc(restName)}`));
     if (c.faith && window.Umash.FAITHS[c.faith]) meta.appendChild(el("span", null, `${esc(window.Umash.FAITHS[c.faith].label)} tradition`));
 
-    // metrics
     const s = c.summary();
-    const metrics = $("metrics"); metrics.innerHTML = "";
-    [["Total steps", s.total], ["Routine", s.routine], ["Decisions", s.weighty], ["Resolved", s.resolved]]
-      .forEach(([label, n]) => {
-        const m = el("div", "metric");
-        m.appendChild(el("div", "metric__n", String(n)));
-        m.appendChild(el("div", "metric__l", label));
-        metrics.appendChild(m);
-      });
+    const decisionsLeft = c.pendingEscalations().length;
+    const routineLeft = c.routine().filter(t => !c.isResolved(t)).length;
+
+    // one quiet status line (was a 4-card metric grid + two big bars)
+    const status = $("status-line"); status.innerHTML = "";
+    status.appendChild(frag(`<b>${s.resolved}</b> of <b>${s.total}</b> steps handled`));
+    if (decisionsLeft) status.appendChild(frag(` · <b>${decisionsLeft}</b> decision${decisionsLeft === 1 ? "" : "s"} for you`));
+    if (routineLeft) status.appendChild(frag(` · <b>${routineLeft}</b> routine prepared`));
     $("rail").style.width = s.total ? `${Math.round(100 * s.resolved / s.total)}%` : "0%";
 
-    // next-best-action / completion affirmation
+    renderFocus(c, decisionsLeft, routineLeft);
+    renderPhases(c);
+    if (window.Umash.wireImages) window.Umash.wireImages();
+  }
+
+  // small helper: build an element from an HTML string fragment (inline spans)
+  function frag(html) { const s = document.createElement("span"); s.innerHTML = html; return s; }
+
+  // THE focal point — one thing to look at.
+  function renderFocus(c, decisionsLeft, routineLeft) {
     const slot = $("focus-slot"); slot.innerHTML = "";
     const unresolved = c.tasks.filter(t => !c.isResolved(t));
+
     if (unresolved.length === 0) {
-      // Everything is resolved — a quiet, grief-appropriate affirmation.
       const done = el("div", "done-state");
       done.appendChild(el("h3", null, "You've done everything for now."));
       done.appendChild(el("p", null,
         `Every step for ${esc(c.name)} has been handled or decided. There is nothing waiting on you. Rest.`));
       slot.appendChild(done);
-    } else {
-      // Point to the single most urgent thing: soonest-deadline pending decision,
-      // else the soonest-deadline routine task.
-      const byUrgency = (a, b) => (a.deadlineDays ?? 1e6) - (b.deadlineDays ?? 1e6);
-      const nextDecision = c.pendingEscalations()[0];
-      const next = nextDecision ||
-        unresolved.slice().sort(byUrgency)[0];
-      if (next) {
-        const na = el("div", "next-action");
-        const txt = el("div", "grow");
-        txt.appendChild(el("div", "next-action__label",
-          nextDecision ? "Your most urgent decision" : "A good next step"));
-        txt.appendChild(el("div", "next-action__title", esc(next.title)));
-        na.appendChild(txt);
-        if (nextDecision) {
-          const b = el("button", "btn btn--ink btn--sm", "Review it");
-          b.onclick = () => openEscalationFor(next.id);
-          na.appendChild(b);
-        }
-        slot.appendChild(na);
-      }
+      return;
     }
 
-    // batch bar — visible only while routine work is unapproved
-    const routinePending = c.routine().filter(t => !c.isResolved(t));
-    $("batchbar").hidden = routinePending.length === 0;
-    $("batch-title").textContent = `${routinePending.length} routine task${routinePending.length === 1 ? "" : "s"}, prepared quietly`;
+    const next = c.pendingEscalations()[0];
+    if (next) {
+      // lead with the single most urgent decision
+      const card = el("div", "next-action");
+      const txt = el("div", "grow");
+      txt.appendChild(el("div", "next-action__label", "Your most urgent decision"));
+      txt.appendChild(el("div", "next-action__title", esc(next.title)));
+      card.appendChild(txt);
+      const btn = el("button", "btn btn--lime", "Review it");
+      btn.onclick = () => openEscalationFor(next.id);
+      card.appendChild(btn);
+      slot.appendChild(card);
+    } else if (routineLeft) {
+      // no decisions pending — the only thing left is to approve routine work, quietly
+      const card = el("div", "next-action next-action--calm");
+      const txt = el("div", "grow");
+      txt.appendChild(el("div", "next-action__label", "No decisions need you right now"));
+      txt.appendChild(el("div", "next-action__title",
+        `${routineLeft} routine task${routineLeft === 1 ? "" : "s"} prepared, ready to approve together`));
+      card.appendChild(txt);
+      const btn = el("button", "btn btn--ink", "Approve all");
+      btn.onclick = approveBatch;
+      card.appendChild(btn);
+      slot.appendChild(card);
+    }
+  }
 
-    // escalation bar
-    const escalations = c.pendingEscalations();
-    $("escbar").hidden = escalations.length === 0;
-    $("esc-title").textContent = `${escalations.length} decision${escalations.length === 1 ? "" : "s"} waiting`;
-
-    // phases
+  // Phases as collapsible summary rows — the eye sees four, not forty-two.
+  function renderPhases(c) {
     const wrap = $("phases"); wrap.innerHTML = "";
     for (const phase of PHASE_ORDER) {
       const tasks = c.tasks.filter(t => t.phase === phase);
       if (!tasks.length) continue;
-      const group = el("section", "phase");
-      const label = el("div", "phase__label");
-      const icon = el("span", "phase__icon");
-      icon.innerHTML = PHASE_ART[phase] || "";
-      label.appendChild(icon);
-      label.appendChild(el("h2", null, esc(PHASE_LABEL[phase])));
       const done = tasks.filter(t => c.isResolved(t)).length;
-      label.appendChild(el("span", "phase__count", `${done} / ${tasks.length} resolved`));
-      group.appendChild(label);
-      tasks.forEach(t => group.appendChild(renderTask(t)));
-      wrap.appendChild(group);
+      const decisions = tasks.filter(t => t.weighty && !c.isResolved(t));
+      const routine = tasks.filter(t => !t.weighty);
+
+      const details = el("details", "phase");
+      details.open = (openPhase === phase);
+      details.addEventListener("toggle", () => {
+        if (details.open) { openPhase = phase; renderPhases(c); }
+        else if (openPhase === phase) { openPhase = null; }
+      });
+
+      // summary row
+      const sum = el("summary", "phase__summary");
+      const icon = el("span", "phase__icon"); icon.innerHTML = PHASE_ART[phase] || "";
+      sum.appendChild(icon);
+      sum.appendChild(el("span", "phase__name", esc(PHASE_LABEL[phase].split("—")[0].trim())));
+      const bar = el("span", "phase__bar");
+      const fill = el("span"); fill.style.width = `${Math.round(100 * done / tasks.length)}%`;
+      bar.appendChild(fill); sum.appendChild(bar);
+      // quiet meta: decisions first (the thing that matters), then routine count
+      const parts = [];
+      if (decisions.length) parts.push(`${decisions.length} decision${decisions.length === 1 ? "" : "s"}`);
+      if (routine.length) parts.push(`${routine.length} routine`);
+      parts.push(`${done}/${tasks.length} done`);
+      sum.appendChild(el("span", "phase__meta", parts.join(" · ")));
+      sum.appendChild(chevron());
+      details.appendChild(sum);
+
+      // body (only rendered/visible when open)
+      const body = el("div", "phase__body");
+      // decisions get their own rows
+      decisions.forEach(t => body.appendChild(renderDecision(t)));
+      // any resolved weighty (show quietly so the record is complete)
+      tasks.filter(t => t.weighty && c.isResolved(t)).forEach(t => body.appendChild(renderDecision(t)));
+      // routine folded into one quiet group
+      if (routine.length) body.appendChild(renderRoutineGroup(routine));
+      details.appendChild(body);
+
+      wrap.appendChild(details);
     }
-    if (window.Umash.wireImages) window.Umash.wireImages();
   }
 
-  function renderTask(t) {
-    const c = current;
-    const row = el("article", "task");
-    const top = el("div", "task__top");
+  function chevron() {
+    const s = el("span", "phase__chevron");
+    s.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return s;
+  }
 
+  // A decision row — the only kind that gets its own card. Minimal chrome:
+  // title, who it's directed at, a deadline only when it's genuinely soon, and
+  // the action. No "Decision"/"Drafted" chips — being here already says enough.
+  function renderDecision(t) {
+    const c = current;
+    const row = el("article", "task task--decision");
+    const top = el("div", "task__top");
     const left = el("div", "grow");
     left.appendChild(el("div", "task__title", esc(t.title)));
     left.appendChild(el("div", "task__target", `Directed at ${esc(t.target)}`));
-    const tags = el("div", "task__tags"); tags.style.marginTop = "8px";
-
-    // status dot + label
-    const st = el("span", "tag");
-    st.style.borderColor = "var(--color-frost-wash)";
-    st.appendChild(el("span", `dot dot--${t.status}`));
-    st.appendChild(document.createTextNode(" " + STATUS_LABEL[t.status]));
-    tags.appendChild(st);
-
-    // routine / weighty
-    tags.appendChild(el("span", t.weighty ? "tag tag--weighty" : "tag tag--routine",
-      t.weighty ? "Decision" : "Routine"));
-
-    // deadline
-    if (t.deadlineDays != null) {
-      const soon = t.deadlineDays <= 3;
-      const pill = el("span", `deadline${soon ? " deadline--soon" : ""}`,
-        `${CLOCK} ${deadlineText(t.deadlineDays)}`);
-      tags.appendChild(pill);
+    // deadline shown only when it actually matters (soon), reserving red for urgency
+    if (t.deadlineDays != null && t.deadlineDays <= 7) {
+      const soon = t.deadlineDays <= 2;
+      const tags = el("div", "task__tags");
+      tags.appendChild(el("span", `deadline${soon ? " deadline--soon" : ""}`,
+        `${CLOCK} ${deadlineText(t.deadlineDays)}`));
+      left.appendChild(tags);
     }
-    left.appendChild(tags);
     top.appendChild(left);
 
-    // actions depend on state
     const actions = el("div", "task__actions");
-    if (t.weighty && !c.isResolved(t)) {
+    if (!c.isResolved(t)) {
       const b = el("button", "btn btn--ink btn--sm", "Decide");
       b.onclick = () => openEscalationFor(t.id);
       actions.appendChild(b);
-    }
-    if (t.status === "approved") {
+    } else if (t.status === "approved") {
       const b = el("button", "btn btn--ghost-light btn--sm", "Mark sent");
       b.onclick = () => { c.markSent(t.id); persist(); renderDash(); toast("Marked as sent by you"); };
       actions.appendChild(b);
-    }
-    if (t.status === "sent") {
+    } else if (t.status === "sent") {
       const b = el("button", "btn btn--ghost-light btn--sm", "Mark confirmed");
       b.onclick = () => { c.confirm(t.id); persist(); renderDash(); toast("Institution confirmed"); };
       actions.appendChild(b);
     }
     top.appendChild(actions);
     row.appendChild(top);
-
     if (t.decision) {
       row.appendChild(el("div", "task__decision", `<strong>Your decision:</strong> ${esc(t.decision)}`));
     }
     return row;
+  }
+
+  // Routine work stays quiet: one collapsed group, not a card per task.
+  function renderRoutineGroup(routine) {
+    const c = current;
+    const pending = routine.filter(t => !c.isResolved(t));
+    const details = el("details", "routine-group");
+    const head = el("summary", "routine-group__head");
+    const label = pending.length
+      ? frag(`<b>${pending.length}</b> routine task${pending.length === 1 ? "" : "s"} prepared, batched for one approval`)
+      : frag(`<b>${routine.length}</b> routine task${routine.length === 1 ? "" : "s"} — all approved`);
+    head.appendChild(label);
+    head.appendChild(chevron());
+    details.appendChild(head);
+
+    const list = el("div", "routine-group__list");
+    routine.forEach(t => {
+      const item = el("div", "routine-item");
+      const dot = el("span", `dot dot--${t.status}`);
+      item.appendChild(dot);
+      item.appendChild(el("span", null, esc(t.title)));
+      item.appendChild(el("span", "routine-item__target", esc(t.target)));
+      list.appendChild(item);
+    });
+    details.appendChild(list);
+    return details;
   }
 
   // ---------------------------------------------------------------- batch
@@ -226,14 +275,6 @@
     scrim.hidden = false;
     scrim.classList.add("open");
     document.addEventListener("keydown", trapFocus, true);
-  }
-
-  function startEscalations() {
-    queue = current.pendingEscalations().map(t => t.id);
-    queueIndex = 0;
-    if (!queue.length) return;
-    openModal();
-    renderModal();
   }
 
   function openEscalationFor(id) {
@@ -351,8 +392,6 @@
 
   // ---------------------------------------------------------------- wiring
   $("btn-create").onclick = createCase;
-  $("btn-batch").onclick = approveBatch;
-  $("btn-esc").onclick = startEscalations;
   $("btn-new-nav").onclick = () => show("view-create");
   $("link-cases").onclick = (e) => { e.preventDefault(); renderCases(); show("view-cases"); };
   $("scrim").onclick = (e) => { if (e.target === $("scrim")) closeModal(); };

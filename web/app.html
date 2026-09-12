@@ -14,56 +14,76 @@
   /* case header */
   .case-head { padding: var(--spacing-32) 0 var(--spacing-24); }
   .case-head .hero-headline { text-align: left; font-size: 44px; letter-spacing: -0.02em; }
-  .case-meta { display: flex; gap: var(--spacing-24); flex-wrap: wrap; margin-top: var(--spacing-12); }
+  .case-meta { display: flex; gap: var(--spacing-16); flex-wrap: wrap; margin-top: var(--spacing-12); }
   .case-meta span { color: var(--color-muted-ink); font-size: var(--text-caption); }
+  .case-meta span + span::before { content: "·"; margin-right: var(--spacing-16); color: var(--color-stone-gray); }
 
-  /* progress metrics */
-  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-16); margin-bottom: var(--spacing-24); }
-  .metric { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-20) var(--spacing-24); }
-  .metric__n { font-family: var(--font-sana-serif); font-weight: 400; font-size: 40px; line-height: 1; }
-  .metric__l { color: var(--color-muted-ink); font-size: var(--text-caption); margin-top: var(--spacing-8); }
+  /* one quiet status line (replaces the metric grid + two action bars) */
+  .status-line { display: flex; align-items: baseline; gap: var(--spacing-8); flex-wrap: wrap;
+    color: var(--color-muted-ink); font-size: var(--text-caption); margin-bottom: var(--spacing-12); }
+  .status-line b { color: var(--color-ink-black); font-weight: var(--fw-450); font-feature-settings: "tnum" on; }
 
   /* progress rail */
-  .rail { height: 6px; border-radius: 9999px; background: var(--color-frost-wash); overflow: hidden; }
+  .rail { height: 4px; border-radius: 9999px; background: var(--color-frost-wash); overflow: hidden; margin-bottom: var(--spacing-32); }
   .rail__fill { height: 100%; background: var(--color-ink-black); width: 0; transition: width 240ms ease; }
 
-  /* action bar (batch approval) — ink surface, lime CTA allowed here */
-  .actionbar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-16); flex-wrap: wrap; }
-  .actionbar .grow { min-width: 220px; }
-  .actionbar h3 { color: var(--color-paper-white); font-size: var(--text-heading); font-weight: var(--fw-medium); }
-  .actionbar p { color: var(--color-stone-gray); font-size: var(--text-caption); margin-top: 4px; }
+  /* THE focal point: one next decision. */
+  .next-action { display: flex; align-items: center; gap: var(--spacing-16); flex-wrap: wrap;
+    background: var(--color-ink-black); border-radius: var(--radius-cards);
+    padding: var(--spacing-24) var(--spacing-32); margin-bottom: var(--spacing-32); }
+  .next-action .grow { min-width: 200px; }
+  .next-action__label { font-size: var(--text-caption); color: var(--color-stone-gray); }
+  .next-action__title { font-size: var(--text-heading); font-weight: var(--fw-medium); color: var(--color-paper-white); margin-top: 4px; }
+  /* when there is no pending decision, the focal card goes calm/frost instead of ink */
+  .next-action--calm { background: var(--color-frost-wash); }
+  .next-action--calm .next-action__title { color: var(--color-ink-black); }
+  .next-action--calm .next-action__label { color: var(--color-muted-ink); }
 
-  /* phase groups */
-  .phase { margin-top: var(--spacing-32); }
-  .phase__label { display: flex; align-items: baseline; gap: var(--spacing-12); margin-bottom: var(--spacing-16); }
-  .phase__icon { align-self: center; flex: none; line-height: 0; }
-  .phase__label h2 { font-size: var(--text-heading); font-weight: var(--fw-medium); }
-  .phase__count { color: var(--color-muted-ink); font-size: var(--text-caption); }
+  /* phase as a collapsible summary row — the eye sees 4 of these, not 42 tasks */
+  .phase { border-bottom: 1px solid var(--color-frost-wash); }
+  .phase:first-of-type { border-top: 1px solid var(--color-frost-wash); }
+  .phase__summary { display: flex; align-items: center; gap: var(--spacing-16); width: 100%;
+    background: transparent; border: 0; cursor: pointer; text-align: left;
+    padding: var(--spacing-20) var(--spacing-8); font-family: var(--font-sana-sans); }
+  .phase__summary:hover { background: rgba(228,239,247,0.4); }
+  .phase__icon { flex: none; line-height: 0; }
+  .phase__name { font-size: var(--text-heading); font-weight: var(--fw-450); flex: none; }
+  .phase__meta { color: var(--color-muted-ink); font-size: var(--text-caption); font-feature-settings: "tnum" on; }
+  .phase__bar { flex: 1; height: 4px; min-width: 60px; border-radius: 9999px; background: var(--color-frost-wash); overflow: hidden; }
+  .phase__bar span { display: block; height: 100%; background: var(--color-ink-black); }
+  .phase__chevron { flex: none; color: var(--color-muted-ink); transition: transform 160ms ease; }
+  .phase[open] .phase__chevron { transform: rotate(90deg); }
+  .phase__body { padding: 0 var(--spacing-8) var(--spacing-24); display: flex; flex-direction: column; gap: var(--spacing-12); }
 
-  /* task row */
-  .task { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-16) var(--spacing-24); transition: border-color 120ms ease, background 120ms ease; }
-  .task:hover { border-color: var(--color-ink-black); }
-  .task + .task { margin-top: var(--spacing-12); }
+  /* a task row (decisions get these; routine is grouped below) */
+  .task { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-16) var(--spacing-24); }
   .task__top { display: flex; align-items: flex-start; gap: var(--spacing-16); }
   .task__title { font-weight: var(--fw-450); }
   .task__target { color: var(--color-muted-ink); font-size: var(--text-caption); margin-top: 2px; }
-  .task__tags { display: flex; gap: var(--spacing-8); align-items: center; flex-wrap: wrap; }
+  .task__tags { display: flex; gap: var(--spacing-12); align-items: center; flex-wrap: wrap; margin-top: var(--spacing-8); }
   .task__actions { display: flex; gap: var(--spacing-8); margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
   .task__decision { margin-top: var(--spacing-12); font-size: var(--text-caption); color: var(--color-ink-black); background: var(--color-frost-wash); border-radius: 12px; padding: var(--spacing-10) var(--spacing-16); }
-  .deadline { color: var(--color-ink-black); font-size: var(--text-caption); font-weight: var(--fw-450); display: inline-flex; align-items: center; gap: 5px; }
-  .deadline--soon { color: #b91c1c; }
+  .task--decision { border-color: var(--color-ink-black); }
+
+  .deadline { color: var(--color-muted-ink); font-size: var(--text-caption); display: inline-flex; align-items: center; gap: 5px; }
+  .deadline--soon { color: #b91c1c; font-weight: var(--fw-450); }
   .clock { flex: none; }
 
-  /* Next-best-action hint: quiet guidance to the single most urgent thing. */
-  .next-action { display: flex; align-items: center; gap: var(--spacing-16); flex-wrap: wrap;
-    border: 1px solid var(--color-ink-black); border-radius: var(--radius-cards);
-    padding: var(--spacing-16) var(--spacing-24); margin-bottom: var(--spacing-24); }
-  .next-action__label { font-size: var(--text-caption); color: var(--color-muted-ink); }
-  .next-action__title { font-weight: var(--fw-450); }
+  /* grouped routine block — routine work stays quiet, one line not many rows */
+  .routine-group { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); }
+  .routine-group__head { display: flex; align-items: center; gap: var(--spacing-12); width: 100%;
+    background: transparent; border: 0; cursor: pointer; text-align: left; font-family: var(--font-sana-sans);
+    padding: var(--spacing-16) var(--spacing-24); color: var(--color-muted-ink); font-size: var(--text-body); }
+  .routine-group__head b { color: var(--color-ink-black); font-weight: var(--fw-450); }
+  .routine-group__head .phase__chevron { margin-left: auto; }
+  .routine-group[open] .phase__chevron { transform: rotate(90deg); }
+  .routine-group__list { padding: 0 var(--spacing-24) var(--spacing-16); }
+  .routine-item { display: flex; align-items: baseline; gap: var(--spacing-12); padding: var(--spacing-8) 0; font-size: var(--text-body); border-top: 1px solid var(--color-frost-wash); }
+  .routine-item__target { color: var(--color-muted-ink); font-size: var(--text-caption); margin-left: auto; }
 
   /* Completion / affirmation state — quiet and grief-appropriate. */
   .done-state { border: 1px solid var(--color-frost-wash); background: var(--color-frost-wash);
-    border-radius: var(--radius-cards); padding: var(--spacing-24) var(--spacing-32); }
+    border-radius: var(--radius-cards); padding: var(--spacing-24) var(--spacing-32); margin-bottom: var(--spacing-32); }
   .done-state h3 { font-family: var(--font-sana-serif); font-weight: 400; font-size: 28px; margin-bottom: var(--spacing-8); }
   .done-state p { color: var(--color-muted-ink); }
 
@@ -94,10 +114,15 @@
   .toast.show { opacity: 1; }
 
   @media (max-width: 860px) {
-    .metrics { grid-template-columns: 1fr 1fr; }
     .grid-2 { grid-template-columns: 1fr; }
     .task__top { flex-wrap: wrap; }
     .task__actions { margin-left: 0; }
+    /* Phase rows: drop the bar and let name + meta stack tidily on narrow screens. */
+    .phase__summary { flex-wrap: wrap; row-gap: var(--spacing-8); }
+    .phase__bar { display: none; }
+    .phase__name { flex: 1; }
+    .phase__meta { width: 100%; order: 3; }
+    .phase__chevron { order: 2; }
   }
 </style>
 </head>
@@ -173,32 +198,14 @@
       <div class="case-meta" id="case-meta"></div>
     </header>
 
-    <!-- metrics -->
-    <div class="metrics" id="metrics"></div>
-    <div class="rail" style="margin-bottom:var(--spacing-24)"><div class="rail__fill" id="rail"></div></div>
+    <!-- one quiet status line replaces the metric grid -->
+    <p class="status-line" id="status-line"></p>
+    <div class="rail"><div class="rail__fill" id="rail"></div></div>
 
-    <!-- next-best-action / completion affirmation -->
+    <!-- THE focal point: the single next decision (or a calm 'nothing waiting') -->
     <div id="focus-slot"></div>
 
-    <!-- routine batch bar -->
-    <div class="card card--ink actionbar" id="batchbar" hidden>
-      <div class="grow">
-        <h3 id="batch-title">Routine work, prepared quietly</h3>
-        <p id="batch-sub">These are reversible and low-stakes. Approve them in one stroke.</p>
-      </div>
-      <button class="btn btn--lime" id="btn-batch">Approve routine batch</button>
-    </div>
-
-    <!-- escalation bar -->
-    <div class="card card--ink actionbar" id="escbar" hidden style="margin-top:var(--spacing-16)">
-      <div class="grow">
-        <h3 id="esc-title">Decisions waiting</h3>
-        <p id="esc-sub">Weighty, irreversible, or time-critical. Umash surfaces them one at a time.</p>
-      </div>
-      <button class="btn btn--lime" id="btn-esc">Review decisions</button>
-    </div>
-
-    <!-- phases -->
+    <!-- collapsible phase summary rows -->
     <div id="phases"></div>
   </section>
 
