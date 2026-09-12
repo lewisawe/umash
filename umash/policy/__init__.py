@@ -13,21 +13,23 @@ from .jurisdictions import (
     supported_jurisdictions,
     tasks_for,
 )
+from .faith import Faith, FaithPack, get_faith_pack, supported_faiths, apply_faith
 from .casestate import CaseState, TaskState, Status, InvalidTransition
 from .drafting import build_draft
 
 
 def build_case(case_id: str, died_in, rest_in=None,
-               deceased_name: str = "the deceased") -> CaseState:
+               deceased_name: str = "the deceased", faith=None) -> CaseState:
     """Build a populated CaseState from the jurisdiction packs.
 
     This is where the stateless policy (tasks_for + classify) becomes a stateful,
     persistable case the family works over time. Each task is classified once and
-    its weighty/routine verdict is frozen into the case.
+    its weighty/routine verdict is frozen into the case. An optional `faith`
+    adjusts the service timing and adds rite-specific tasks.
     """
     cs = CaseState(case_id, str(died_in), str(rest_in) if rest_in else None,
                    deceased_name)
-    for t in tasks_for(died_in, rest_in):
+    for t in tasks_for(died_in, rest_in, faith):
         v = classify(t.title, t.deadline_days)
         cs.add_task(title=t.title, phase=t.phase.value, target=t.target,
                     weighty=v.escalates, deadline_days=t.deadline_days)
@@ -47,6 +49,11 @@ __all__ = [
     "get_pack",
     "supported_jurisdictions",
     "tasks_for",
+    "Faith",
+    "FaithPack",
+    "get_faith_pack",
+    "supported_faiths",
+    "apply_faith",
     "CaseState",
     "TaskState",
     "Status",

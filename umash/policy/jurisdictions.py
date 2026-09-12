@@ -232,12 +232,14 @@ def _repatriation_tasks(died_in: Jurisdiction, rest_in: Jurisdiction) -> list[Ta
 
 
 def tasks_for(died_in: Jurisdiction | str,
-              rest_in: Jurisdiction | str | None = None) -> list[Task]:
+              rest_in: Jurisdiction | str | None = None,
+              faith=None) -> list[Task]:
     """Full task list for a case.
 
-    Uses the pack of the country where the death occurred, and appends
-    cross-border repatriation tasks when the resting place is a different
-    country.
+    Uses the pack of the country where the death occurred, appends cross-border
+    repatriation tasks when the resting place is a different country, and — if a
+    faith is given — injects its rites and compresses the service to the
+    tradition's customary window. Faith is optional; omit it to impose nothing.
     """
     if isinstance(died_in, str):
         died_in = Jurisdiction(died_in.upper())
@@ -247,4 +249,8 @@ def tasks_for(died_in: Jurisdiction | str,
             rest_in = Jurisdiction(rest_in.upper())
         if rest_in != died_in:
             tasks = _repatriation_tasks(died_in, rest_in) + tasks
+    if faith is not None:
+        # imported lazily to avoid a circular import (faith imports Task from here)
+        from .faith import apply_faith
+        tasks = apply_faith(tasks, faith)
     return tasks

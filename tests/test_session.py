@@ -103,6 +103,31 @@ def test_organ_donation_and_title_transfer_are_weighty():
     assert not classify("Find grief and bereavement support").escalates
 
 
+def test_faith_injects_rites_and_compresses_urgency():
+    from umash.policy import build_case, supported_faiths
+    assert "muslim" in supported_faiths()
+    base = build_case("t", "KE", "UK", "x")
+    muslim = build_case("t", "KE", "UK", "x", faith="muslim")
+    # rites are added
+    assert len(muslim.tasks()) > len(base.tasks())
+    titles = [t.title.lower() for t in muslim.tasks()]
+    assert any("ghusl" in t for t in titles)
+    assert any("janazah" in t for t in titles)
+    # every funeral task is compressed to the ~1-day burial window
+    muslim_funeral = [t for t in muslim.tasks() if t.phase == "funeral"]
+    assert muslim_funeral and all(t.deadline_days == 1 for t in muslim_funeral)
+
+
+def test_no_faith_leaves_the_plan_unchanged():
+    from umash.policy import build_case
+    base = build_case("t", "KE", "UK", "x")
+    explicit_none = build_case("t", "KE", "UK", "x", faith=None)
+    assert len(base.tasks()) == len(explicit_none.tasks())
+    # funeral timing is NOT imposed when no faith is given
+    base_funeral = [t.deadline_days for t in base.tasks() if t.phase == "funeral"]
+    assert base_funeral.count(None) >= 1   # at least some open-ended timing remains
+
+
 def test_decline_records_and_resolves():
     c = build_case("t", "KE", "UK", "x")
     s = Session(c)
