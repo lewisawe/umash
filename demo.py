@@ -19,7 +19,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from umash.agent import build_agent, run_offline  # noqa: E402
+# NOTE: do NOT import umash.agent at module top level — it pulls in Strands via
+# umash.tools, which the offline walkthrough must run without. build_agent is
+# imported lazily inside print_online() so `python demo.py --offline` works with
+# only the standard library (this is also what CI exercises).
 
 PROFILE_PATH = os.path.join(HERE, "umash", "data", "demo_profile.json")
 
@@ -31,6 +34,7 @@ def load_profile() -> dict:
 
 def print_offline(profile: dict) -> None:
     from umash.session import Session, auto_decider
+    from umash.policy.phases import PHASE_ORDER
 
     session = Session.new(profile["case_id"], profile["died_in"],
                           profile.get("rest_in"), profile["deceased_name"])
@@ -46,7 +50,7 @@ def print_offline(profile: dict) -> None:
     session.prepare_routine()
     session.prepare_escalations()
     view = session.phased_view()
-    for phase_key in ("immediate", "funeral", "admin"):
+    for phase_key in [p.value for p in PHASE_ORDER]:
         block = view[phase_key]
         if not block["routine"] and not block["weighty"]:
             continue
@@ -88,6 +92,7 @@ def print_offline(profile: dict) -> None:
 
 
 def print_online(profile: dict) -> None:
+    from umash.agent import build_agent  # lazy: only the online path needs Strands
     agent = build_agent()
     prompt = (
         f"{profile['situation']} His known accounts: "
