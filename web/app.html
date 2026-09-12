@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Umash — Case</title>
+<meta name="description" content="Your Umash case dashboard — routine work batched, weighty decisions surfaced one at a time.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="imagery.css">
 <style>
@@ -39,7 +41,8 @@
   .phase__count { color: var(--color-muted-ink); font-size: var(--text-caption); }
 
   /* task row */
-  .task { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-16) var(--spacing-24); }
+  .task { border: 1px solid var(--color-frost-wash); border-radius: var(--radius-cards); padding: var(--spacing-16) var(--spacing-24); transition: border-color 120ms ease, background 120ms ease; }
+  .task:hover { border-color: var(--color-ink-black); }
   .task + .task { margin-top: var(--spacing-12); }
   .task__top { display: flex; align-items: flex-start; gap: var(--spacing-16); }
   .task__title { font-weight: var(--fw-450); }
