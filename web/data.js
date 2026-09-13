@@ -324,6 +324,105 @@ class CaseState {
   }
 }
 
+// ------------------------------------------------- agent trace (boxes & arrows)
+// Emits the agent's decision FLOW as nodes+edges, derived from the SAME policy
+// the real Strands agent runs through its tools. This is a faithful replay of
+// what the agent does — build_journey_plan, then classify_consequence per task,
+// branching routine (batch) vs weighty (escalate). It is not invented: every
+// node corresponds to a real tool call / policy step.
+//
+// Node kinds:
+//   tool     — a Strands tool the agent calls (build_journey_plan, classify…)
+//   branch   — a decision point (cross-border? faith? routine vs weighty?)
+//   outcome  — a terminal result (batched / escalated)
+// Each node: {id, kind, tool, label, detail, parent, weighty?}
+function buildTrace(cs) {
+  const nodes = [];
+  const add = (n) => { nodes.push(n); return n.id; };
+  let i = 0;
+  const nid = () => `n${i++}`;
+
+  // 1. Intake — the agent reads the situation into structured facts.
+  const intake = add({
+    id: nid(), kind: "tool", tool: "intake",
+    label: "Read the situation",
+    detail: `${cs.name} · died ${JURISDICTION_NAME[cs.diedIn]} · rest ${JURISDICTION_NAME[cs.restIn]}` +
+            (cs.faith && FAITHS[cs.faith] ? ` · ${FAITHS[cs.faith].label}` : ""),
+    parent: null,
+  });
+
+  // 2. Cross-border branch (only when it applies).
+  let planParent = intake;
+  if (cs.crossBorder) {
+    planParent = add({
+      id: nid(), kind: "branch", tool: "build_journey_plan",
+      label: "Cross-border?",
+      detail: `Yes — ${cs.diedIn} → ${cs.restIn}. Add repatriation steps.`,
+      parent: intake,
+    });
+  }
+
+  // 3. Build the phased, jurisdiction-aware plan.
+  const plan = add({
+    id: nid(), kind: "tool", tool: "build_journey_plan",
+    label: "build_journey_plan()",
+    detail: `${cs.diedIn}${cs.crossBorder ? "→" + cs.restIn : ""}` +
+            `${cs.faith ? ", " + cs.faith : ""} · ${cs.tasks.length} steps across 4 phases`,
+    parent: planParent,
+  });
+
+  // 4. Faith branch (only when a tradition is set).
+  let classifyParent = plan;
+  if (cs.faith && FAITHS[cs.faith]) {
+    const f = FAITHS[cs.faith];
+    classifyParent = add({
+      id: nid(), kind: "branch", tool: "build_journey_plan",
+      label: "Faith set?",
+      detail: `${f.label}` + (f.window != null
+        ? ` — compress funeral to ~${f.window} day${f.window === 1 ? "" : "s"}, add rites`
+        : " — add rites, no timing change"),
+      parent: plan,
+    });
+  }
+
+  // 5. Per-task classification, branching routine vs weighty. To keep the graph
+  // legible we summarise routine as one batched outcome and show each weighty
+  // decision as its own escalated node (that's the product's whole point).
+  const classify = add({
+    id: nid(), kind: "tool", tool: "classify_consequence",
+    label: "classify_consequence() · each step",
+    detail: "Deterministic: money / legal / irreversible / time-critical → escalate",
+    parent: classifyParent,
+  });
+
+  const routineCount = cs.routine().length;
+  if (routineCount) {
+    add({
+      id: nid(), kind: "outcome", tool: "classify_consequence",
+      label: `Routine → batch (${routineCount})`,
+      detail: "Reversible, low-stakes. Drafted quietly, one approval.",
+      parent: classify, weighty: false,
+    });
+  }
+
+  // weighty, most-urgent-first (same order the agent escalates them)
+  const weighty = cs.pendingEscalations().length
+    ? cs.pendingEscalations()
+    : cs.weighty().slice().sort((a, b) => (a.deadlineDays ?? 1e6) - (b.deadlineDays ?? 1e6));
+  weighty.forEach((t) => {
+    const why = (t.reasons[0] || "").split(":")[0];
+    const dl = t.deadlineDays != null ? ` · due ${t.deadlineDays}d` : "";
+    add({
+      id: nid(), kind: "outcome", tool: "classify_consequence",
+      label: `Escalate: ${t.title}`,
+      detail: `${why}${dl} — surfaced one at a time, waits for your decision.`,
+      parent: classify, weighty: true, taskId: t.id,
+    });
+  });
+
+  return nodes;
+}
+
 const STORE_KEY = "umash.cases.v1";
 const Store = {
   all() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; } },
@@ -333,5 +432,5 @@ const Store = {
   ids() { return Object.keys(this.all()); },
 };
 
-window.Umash = { CaseState, Store, classify, tasksFor, applyFaith,
+window.Umash = { CaseState, Store, classify, tasksFor, applyFaith, buildTrace,
                  PHASE_ORDER, PHASE_LABEL, JURISDICTION_NAME, FAITHS, InvalidTransition };

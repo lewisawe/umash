@@ -109,6 +109,75 @@
   .field label { font-size: var(--text-caption); color: var(--color-muted-ink); }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-16); }
 
+  /* ---- side-by-side: plan | agent decision flow ---- */
+  .dash-split { display: grid; grid-template-columns: 1fr 380px; gap: var(--spacing-32); align-items: start; }
+  .dash-split__trace { position: sticky; top: var(--spacing-24); }
+  .trace__head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-12); margin-bottom: var(--spacing-8); }
+  .trace__sub { color: var(--color-muted-ink); font-size: var(--text-caption); line-height: var(--leading-caption); margin-bottom: var(--spacing-16); }
+
+  /* auto-run narration line */
+  .autorun-caption { background: var(--color-ink-black); color: var(--color-paper-white);
+    border-radius: 14px; padding: var(--spacing-12) var(--spacing-16); margin-bottom: var(--spacing-16);
+    font-size: var(--text-caption); line-height: var(--leading-caption);
+    display: flex; align-items: center; gap: var(--spacing-8); }
+  .autorun-caption[hidden] { display: none; }
+  .autorun-caption .dot-pulse { width: 8px; height: 8px; border-radius: 9999px; flex: none;
+    background: var(--color-electric-lime); animation: dot-pulse 1s ease-in-out infinite; }
+  @keyframes dot-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* the boxes-and-arrows flow */
+  .trace { display: flex; flex-direction: column; }
+  .trace__node { position: relative; }
+  /* the connector arrow between a node and the next */
+  .trace__node:not(:last-child) .trace__box::after {
+    content: ""; position: absolute; left: 50%; bottom: -18px; width: 1.5px; height: 18px;
+    background: var(--color-stone-gray); transform: translateX(-50%);
+  }
+  .trace__node:not(:last-child) .trace__box::before {
+    content: ""; position: absolute; left: 50%; bottom: -18px; width: 6px; height: 6px;
+    border-right: 1.5px solid var(--color-stone-gray); border-bottom: 1.5px solid var(--color-stone-gray);
+    transform: translateX(-50%) rotate(45deg); transform-origin: center;
+  }
+  .trace__node + .trace__node { margin-top: 18px; }
+
+  .trace__box {
+    position: relative; border: 1px solid var(--color-frost-wash); border-radius: 14px;
+    padding: var(--spacing-12) var(--spacing-16); background: var(--color-paper-white);
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 300ms ease, transform 300ms cubic-bezier(0.16,1,0.3,1), border-color 200ms ease, box-shadow 200ms ease;
+  }
+  .trace__box.in { opacity: 1; transform: none; }
+  /* brief "just landed" accent so the eye follows the newest step */
+  .trace__box.landing { box-shadow: 0 0 0 3px rgba(205,254,0,0.45); }
+
+  .trace__tool { font-size: 12px; letter-spacing: 0.02em; color: var(--color-stone-gray); font-feature-settings: "tnum" on; margin-bottom: 3px; text-transform: uppercase; }
+  .trace__label { font-size: var(--text-caption); font-weight: var(--fw-450); color: var(--color-ink-black); line-height: 1.3; }
+  .trace__detail { font-size: 13px; color: var(--color-muted-ink); line-height: var(--leading-caption); margin-top: 4px; }
+
+  /* node kinds */
+  .trace__box--tool { border-color: var(--color-ink-black); }
+  .trace__box--branch { border-style: dashed; border-color: var(--color-stone-gray); }
+  .trace__box--outcome.is-routine { background: var(--color-frost-wash); border-color: var(--color-frost-wash); }
+  .trace__box--outcome.is-weighty { border-color: var(--color-ink-black); background: var(--color-ink-black); }
+  .trace__box--outcome.is-weighty .trace__label { color: var(--color-paper-white); }
+  .trace__box--outcome.is-weighty .trace__detail { color: rgba(255,255,255,0.72); }
+  .trace__box--outcome.is-weighty .trace__tool { color: var(--color-electric-lime); }
+  /* clickable weighty outcomes jump to the decision */
+  .trace__box--clickable { cursor: pointer; }
+  .trace__box--clickable:hover { box-shadow: 0 0 0 3px rgba(205,254,0,0.35); }
+  /* auto-run: the decision currently being weighed, driven in the tree itself */
+  .trace__box--active { box-shadow: 0 0 0 3px var(--color-electric-lime); animation: box-weigh 1.1s ease-in-out infinite; }
+  @keyframes box-weigh { 0%,100% { box-shadow: 0 0 0 3px rgba(205,254,0,0.9); } 50% { box-shadow: 0 0 0 6px rgba(205,254,0,0.35); } }
+  .trace__box--decided { box-shadow: none; }
+  .trace__decision { margin-top: var(--spacing-8); padding-top: var(--spacing-8);
+    border-top: 1px solid rgba(255,255,255,0.18); font-size: 13px; color: var(--color-electric-lime);
+    line-height: var(--leading-caption); }
+
+  @media (max-width: 980px) {
+    .dash-split { grid-template-columns: 1fr; }
+    .dash-split__trace { position: static; margin-top: var(--section-gap); }
+  }
+
   /* escalation modal */
   .scrim { position: fixed; inset: 0; background: rgba(10,18,23,0.55); display: none; align-items: center; justify-content: center; padding: var(--spacing-24); z-index: 50; }
   .scrim.open { display: flex; }
@@ -120,7 +189,7 @@
   .modal h3 { font-size: var(--text-heading); font-weight: var(--fw-medium); margin: var(--spacing-16) 0 var(--spacing-8); }
   .modal__why { background: var(--color-frost-wash); border-radius: 16px; padding: var(--spacing-16); font-size: var(--text-caption); }
   .modal__why ul { margin: var(--spacing-8) 0 0 var(--spacing-16); }
-  .modal__draft { white-space: pre-wrap; font-size: var(--text-caption); color: var(--color-stone-gray); border: 1px solid var(--color-frost-wash); border-radius: 16px; padding: var(--spacing-16); max-height: 160px; overflow: auto; }
+  .modal__draft { white-space: pre-wrap; font-size: var(--text-caption); line-height: var(--leading-caption); color: var(--color-muted-ink); border: 1px solid var(--color-frost-wash); border-radius: 16px; padding: var(--spacing-16); }
   .modal__queue { color: var(--color-stone-gray); font-size: var(--text-caption); }
   .modal__actions { display: flex; gap: var(--spacing-12); margin-top: var(--spacing-8); }
 
@@ -220,8 +289,25 @@
     <!-- THE focal point: the single next decision (or a calm 'nothing waiting') -->
     <div id="focus-slot"></div>
 
-    <!-- collapsible phase summary rows -->
-    <div id="phases"></div>
+    <!-- side by side: the plan (what) | the agent's decision flow (how) -->
+    <div class="dash-split">
+      <div class="dash-split__main">
+        <!-- collapsible phase summary rows -->
+        <div id="phases"></div>
+      </div>
+      <aside class="dash-split__trace" aria-label="How the agent worked">
+        <div class="trace__head">
+          <span class="section-label">How the agent worked</span>
+          <div class="row" style="gap:var(--spacing-8)">
+            <button class="btn btn--lime btn--sm" id="btn-autorun" type="button">▶ Auto-run</button>
+            <button class="btn btn--ghost-light btn--sm" id="btn-replay" type="button">Replay</button>
+          </div>
+        </div>
+        <p class="trace__sub">Every box is a real step the Strands agent runs — the plan it builds, then a routine-vs-weighty call on each task. Weighty ones are escalated to you one at a time.</p>
+        <div id="autorun-caption" class="autorun-caption" hidden></div>
+        <div id="trace" class="trace"></div>
+      </aside>
+    </div>
   </section>
 
   <!-- CASES LIST -->

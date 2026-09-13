@@ -88,6 +88,7 @@
 
     renderFocus(c, decisionsLeft, routineLeft);
     renderPhases(c);
+    renderTrace(c);
     if (window.Umash.wireImages) window.Umash.wireImages();
   }
 
@@ -203,6 +204,64 @@
     return s;
   }
 
+  // The agent's decision flow as boxes-and-arrows. Nodes come from buildTrace()
+  // in data.js — the same policy the real Strands agent runs. Boxes fade in in
+  // sequence so a viewer watches the agent "work"; weighty outcomes are
+  // clickable and jump straight to that decision.
+  let _traceTimers = [];
+  function renderTrace(c, animate = true) {
+    const wrap = $("trace");
+    if (!wrap) return;
+    _traceTimers.forEach(clearTimeout); _traceTimers = [];
+    wrap.innerHTML = "";
+
+    const nodes = window.Umash.buildTrace(c);
+    const boxes = [];
+    nodes.forEach((n) => {
+      const node = el("div", "trace__node");
+      let cls = "trace__box trace__box--" + n.kind;
+      if (n.kind === "outcome") cls += n.weighty ? " is-weighty" : " is-routine";
+      const box = el("div", cls);
+
+      const toolLabel = { intake: "read", build_journey_plan: "build_journey_plan",
+                          classify_consequence: "classify_consequence" }[n.tool] || n.tool;
+      box.appendChild(el("div", "trace__tool", esc(toolLabel)));
+      box.appendChild(el("div", "trace__label", esc(n.label)));
+      if (n.detail) box.appendChild(el("div", "trace__detail", esc(n.detail)));
+
+      // weighty outcomes that are still pending jump to the decision
+      if (n.weighty && n.taskId) {
+        box.dataset.taskId = n.taskId;
+        if (!c.isResolved(c.get(n.taskId))) {
+          box.classList.add("trace__box--clickable");
+          box.setAttribute("role", "button");
+          box.tabIndex = 0;
+          const go = () => openEscalationFor(n.taskId);
+          box.onclick = go;
+          box.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+        }
+      }
+
+      node.appendChild(box);
+      wrap.appendChild(node);
+      boxes.push(box);
+    });
+
+    // stagger the fade-in (skip the animation if reduced-motion is set).
+    // STEP_MS controls the pace — higher = the agent looks like it's thinking
+    // through each step. Reduced-motion users get the whole trace at once.
+    const STEP_MS = 420;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!animate || reduce) { boxes.forEach(b => b.classList.add("in")); return; }
+    boxes.forEach((b, k) => {
+      _traceTimers.push(setTimeout(() => {
+        b.classList.add("in", "landing");
+        // remove the brief "just landed" accent so only the newest box pulses
+        _traceTimers.push(setTimeout(() => b.classList.remove("landing"), STEP_MS));
+      }, STEP_MS * k));
+    });
+  }
+
   // A decision row — the only kind that gets its own card. Minimal chrome:
   // title, who it's directed at, a deadline only when it's genuinely soon, and
   // the action. No "Decision"/"Drafted" chips — being here already says enough.
@@ -293,8 +352,144 @@
     toast(`${n} routine task${n === 1 ? "" : "s"} approved in one batch`);
   }
 
-  // ---------------------------------------------- escalation flow (queue)
-  let lastFocused = null;   // element to restore focus to when the modal closes
+  // ---------------------------------------------- auto-run (hands-off demo)
+  // Drives the REAL app end to end, no clicks: reveal the plan + trace, batch
+  // routine quietly, then surface each weighty decision one at a time and record
+  // a (clearly simulated) decision — pacing the whole thing to ~3 minutes.
+  // It still only drafts and records; nothing is filed, paid, or sent. The
+  // autonomy is in the coordination, exactly as the product promises.
+  let _auto = { running: false, timers: [] };
+
+  function autoCaption(text, pulse = true) {
+    const cap = $("autorun-caption");
+    if (!cap) return;
+    cap.hidden = false;
+    cap.innerHTML = "";
+    if (pulse) cap.appendChild(el("span", "dot-pulse"));
+    cap.appendChild(el("span", null, esc(text)));
+  }
+
+  function autoStop(finished) {
+    _auto.timers.forEach(clearTimeout); _auto.timers = [];
+    _auto.running = false;
+    const btn = $("btn-autorun");
+    if (btn) { btn.textContent = "▶ Auto-run"; btn.classList.remove("btn--danger"); btn.classList.add("btn--lime"); }
+    if (!finished) { const cap = $("autorun-caption"); if (cap) cap.hidden = true; }
+  }
+
+  // a plausible, clearly-simulated decision per weighty task
+  function simulatedDecision(t) {
+    const title = t.title.toLowerCase();
+    if (title.includes("organ") || title.includes("tissue"))
+      return "Decline donation — honouring his stated wishes. (demo decision)";
+    if (title.includes("hospital bill") || title.includes("release the body"))
+      return "Yes — settle from the joint account so the body can be released. (demo decision)";
+    if (title.includes("repatriate"))
+      return "Repatriate to the UK, as the family wishes. (demo decision)";
+    if (title.includes("benefit") || title.includes("claim"))
+      return "Proceed with the claim; I have the documents. (demo decision)";
+    if (title.includes("bank") || title.includes("succession") || title.includes("estate"))
+      return "Begin succession; I'll act as executor. (demo decision)";
+    return "Approved — go ahead. (demo decision)";
+  }
+
+  function schedule(fn, delay) {
+    return new Promise((resolve) => {
+      _auto.timers.push(setTimeout(() => { fn && fn(); resolve(); }, delay));
+    });
+  }
+
+  async function autoRun() {
+    if (_auto.running) { autoStop(false); renderDash(); return; }
+    const c = current;
+    if (!c) return;
+
+    // reset to a clean, un-acted state so the run always starts fresh
+    c.tasks.forEach(t => {
+      t.status = "pending"; t.decision = ""; t.draft = "";
+      t.history = [{ event: "added", at: Date.now() }];
+    });
+    c.routine().forEach(t => c.recordDraft(t.id));
+    c.weighty().forEach(t => c.recordDraft(t.id));
+    persist(); renderDash();
+
+    _auto.running = true;
+    const btn = $("btn-autorun");
+    if (btn) { btn.textContent = "■ Stop"; btn.classList.remove("btn--lime"); btn.classList.add("btn--danger"); }
+
+    // pacing: aim ~3 min. plan+trace ~10s, routine ~6s, then the decisions
+    // share the rest, each getting a readable dwell.
+    const weighty = c.pendingEscalations();
+    autoCaption("Reading the situation and building the jurisdiction-aware plan…");
+    renderTrace(c, true);                     // the boxes-and-arrows draw themselves
+    await schedule(null, 8000);
+    if (!_auto.running) return;
+
+    autoCaption(`Preparing ${c.routine().length} routine tasks quietly, batching them into one approval…`);
+    await schedule(() => { approveBatch(); }, 6000);
+    if (!_auto.running) return;
+
+    // per-decision dwell so the whole run lands near ~3 min. Each decision:
+    // OPEN the modal (show it being made) → approve → CLOSE (see the tree
+    // update + rest on the flow) → next. The open/close rhythm is the point.
+    const total = weighty.length || 1;
+    const perDecision = Math.max(9000, Math.round((180000 - 14000) / total));
+    const OPEN_MS = Math.round(perDecision * 0.55);   // modal visible, reading tradeoffs
+    const TYPE_MS = Math.round(perDecision * 0.15);   // decision "typed" then approved
+    const TREE_MS = Math.round(perDecision * 0.30);   // modal closed, resting on the tree
+
+    for (let i = 0; i < weighty.length; i++) {
+      if (!_auto.running) return;
+      const t = c.get(weighty[i].id);
+      if (c.isResolved(t)) continue;
+
+      // highlight the box in the tree first, so when the modal closes the eye
+      // already knows which node just resolved
+      const box = document.querySelector(`.trace__box[data-task-id="${t.id}"]`);
+      if (box) {
+        document.querySelectorAll(".trace__box--active").forEach(b => b.classList.remove("trace__box--active"));
+        box.classList.add("trace__box--active");
+        box.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      // 1. OPEN the modal — show the decision being weighed
+      autoCaption(`Decision ${i + 1} of ${weighty.length}: ${t.title} — surfacing the tradeoffs.`);
+      openEscalationFor(t.id);
+      await schedule(null, OPEN_MS);
+      if (!_auto.running) return;
+
+      // 2. "type" the decision, then approve through the real safety path
+      const decision = simulatedDecision(t);
+      const noteEl = $("m-note");
+      if (noteEl) { noteEl.value = decision; noteEl.dispatchEvent(new Event("input")); }
+      await schedule(() => {
+        try { c.approve(t.id, decision); persist(); } catch (e) { /* invariant */ }
+      }, TYPE_MS);
+      if (!_auto.running) return;
+
+      // 3. CLOSE the modal — reveal the tree, land the decision on the box
+      closeModal();
+      if (box) {
+        box.classList.remove("trace__box--active");
+        box.classList.add("trace__box--decided");
+        if (!box.querySelector(".trace__decision")) {
+          box.appendChild(el("div", "trace__decision", `✓ ${esc(decision)}`));
+        }
+        box.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      autoCaption(`Recorded. ${weighty.length - (i + 1)} decision${weighty.length - (i + 1) === 1 ? "" : "s"} left. Umash filed nothing.`, false);
+
+      // 4. rest on the tree before the next box opens
+      await schedule(null, TREE_MS);
+    }
+
+    if (!_auto.running) return;
+    renderDash();
+    autoCaption("Every routine task batched, every weighty decision recorded. Umash drafted everything and filed nothing.", false);
+    autoStop(true);
+  }
+
+
 
   function openModal() {
     lastFocused = document.activeElement;
@@ -419,8 +614,12 @@
 
   // ---------------------------------------------------------------- wiring
   $("btn-create").onclick = createCase;
-  $("btn-new-nav").onclick = () => show("view-create");
-  $("link-cases").onclick = (e) => { e.preventDefault(); renderCases(); show("view-cases"); };
+  $("btn-new-nav").onclick = () => { autoStop(false); show("view-create"); };
+  $("link-cases").onclick = (e) => { e.preventDefault(); autoStop(false); renderCases(); show("view-cases"); };
+  const replay = $("btn-replay");
+  if (replay) replay.onclick = () => { if (current) renderTrace(current, true); };
+  const autoBtn = $("btn-autorun");
+  if (autoBtn) autoBtn.onclick = () => autoRun();
   $("scrim").onclick = (e) => { if (e.target === $("scrim")) closeModal(); };
   $("m-close").onclick = closeModal;
   document.addEventListener("keydown", (e) => {

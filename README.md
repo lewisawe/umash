@@ -2,7 +2,7 @@
 
 *A full-journey aftermath coordinator for families after a death.*
 
-> Built for the **Agents for Humans** hackathon (Good Neighbor track) with the
+> Built for the **Agents for Humans** hackathon (Everyday Agents track) with the
 > [Strands Agents SDK](https://strandsagents.com) on Amazon Bedrock.
 
 ## The problem
@@ -135,6 +135,18 @@ python3 -m http.server -d web 8000    # then visit http://localhost:8000
 case, watch routine work batch into one approval, and resolve the weighty
 decisions one at a time. It mirrors the Python policy layer exactly, including
 the safety invariant, and persists cases to your browser's local storage.
+
+The dashboard shows the plan side by side with a live **agent decision flow** —
+a boxes-and-arrows trace of what the agent does: build the plan, take the
+cross-border and faith branches, then a routine-vs-weighty call on every task
+(routine → batched quietly, weighty → escalated one at a time). Each box is a
+real step, derived from the same policy the Strands agent runs through its tools.
+
+Hit **▶ Auto-run** to watch the whole journey play hands-off in about three
+minutes: the plan and trace draw themselves, the routine work batches silently,
+and each weighty decision opens for review, records a (clearly labelled) demo
+decision, and closes so the tree progresses. It still only drafts and records —
+nothing is filed, paid, or sent — which is the point.
 
 ## Use it on a real case (CLI)
 
