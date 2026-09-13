@@ -1,4 +1,4 @@
-# Keep the safety-critical logic out of the model
+# Agents for Humans: keep the safety-critical logic out of the model
 
 *How Umash, an aftermath coordinator for grieving families, puts the decisions that matter in plain Python the agent cannot override, built with the Strands Agents SDK on Amazon Bedrock.*
 
