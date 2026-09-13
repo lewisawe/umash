@@ -75,6 +75,31 @@ That reframes the threat model. The blast radius of a successful injection is "a
 
 None of this makes the model decorative. Building the phased, jurisdiction-aware, faith-aware plan, ordering forty-odd tasks into a sane sequence, writing a registration notice that sounds human instead of like a form, deciding that a Muslim family's funeral needs to lead everything because the burial window is about a day, that is real work, and the agent does it well. The deterministic layer tells the agent what is safe. The agent decides what is kind.
 
+## Making the split visible
+
+A safety argument you can't see is easy to disbelieve. So the web dashboard shows
+the plan on the left and, on the right, the agent's decision flow as boxes and
+arrows — every box a real step it runs through its tools.
+
+![The Umash dashboard: the phased plan on the left, the agent's decision flow on the right](screenshots/02-dashboard-trace.png)
+
+You can read the whole rule off the picture. `build_journey_plan` takes the
+cross-border branch (Kenya to the UK, so add repatriation) and the faith branch
+(Muslim, so compress the funeral to about a day). Then `classify_consequence`
+runs on every task and forks: thirty-four routine tasks collapse into a single
+"batch" node, and each weighty task becomes its own escalation — organ donation,
+settling the hospital bill to release the body, repatriate versus bury.
+
+Hit auto-run and the whole journey plays hands-off in about three minutes. The
+routine work batches silently; each weighty decision opens for review, waits,
+records the decision, and closes so the flow moves on.
+
+![A weighty decision surfaced one at a time, with the reason it was escalated and a draft that is explicitly not send-ready](screenshots/03-decision-modal.png)
+
+Notice the draft: for a weighty task Umash deliberately does *not* produce a
+send-ready notice. It says, in plain words, that this needs the human's decision
+first. The routine drafts are ready to send; the weighty ones are not, by design.
+
 ## The payoff for a builder
 
 Splitting judgment from safety gave me things I did not expect:
