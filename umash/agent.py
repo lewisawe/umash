@@ -62,7 +62,7 @@ human versus what to keep quiet.
 DEFAULT_MODEL_ID = "us.amazon.nova-pro-v1:0"
 
 
-def build_agent(model_id: str | None = None):
+def build_agent(model_id: str | None = None, callback_handler=None):
     """Construct the Strands agent on Bedrock. Requires AWS creds with Bedrock.
 
     Credential/region resolution uses the standard AWS chain, with optional
@@ -74,6 +74,10 @@ def build_agent(model_id: str | None = None):
       - Model: `model_id` arg, else env UMASH_MODEL_ID, else DEFAULT_MODEL_ID.
       - Guardrail (optional): env UMASH_GUARDRAIL_ID + UMASH_GUARDRAIL_VERSION
         (default DRAFT). Create one with scripts/create_guardrail.py.
+
+    A `callback_handler` (any callable Strands accepts) can be passed to observe
+    the agent's streaming events — used by `demo.py --verbose` to print each
+    tool call as it fires, making the Strands tool use visible on screen.
 
     Note: the account used must have Bedrock *invoke* access, not just list.
     """
@@ -111,7 +115,10 @@ def build_agent(model_id: str | None = None):
         model_kwargs["guardrail_redact_output"] = True
 
     model = BedrockModel(**model_kwargs)
-    return Agent(model=model, tools=ALL_TOOLS, system_prompt=SYSTEM_PROMPT)
+    agent_kwargs = {"model": model, "tools": ALL_TOOLS, "system_prompt": SYSTEM_PROMPT}
+    if callback_handler is not None:
+        agent_kwargs["callback_handler"] = callback_handler
+    return Agent(**agent_kwargs)
 
 
 def run_offline(died_in: str, rest_in: str | None, deceased_name: str) -> dict:

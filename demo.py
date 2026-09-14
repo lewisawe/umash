@@ -91,9 +91,34 @@ def print_offline(profile: dict) -> None:
     print("-" * 72)
 
 
-def print_online(profile: dict) -> None:
+def _make_tool_tracer():
+    """A Strands callback_handler that prints each tool call as it fires.
+
+    Makes the agent's use of the six Strands tools visible on screen — the
+    concrete proof that the Strands Agents SDK is driving the run. Streams the
+    model's text too, so a viewer sees reasoning and tool use interleave.
+    """
+    seen = set()
+
+    def handler(**kwargs):
+        # Tool invocations arrive as `current_tool_use` with a toolUseId.
+        tool_use = kwargs.get("current_tool_use") or {}
+        tuid = tool_use.get("toolUseId")
+        name = tool_use.get("name")
+        if name and tuid and tuid not in seen:
+            seen.add(tuid)
+            args = tool_use.get("input")
+            print(f"\n  \u2192 tool call: {name}({args if args else ''})")
+        # Stream assistant text as it comes.
+        if kwargs.get("data"):
+            print(kwargs["data"], end="", flush=True)
+
+    return handler
+
+
+def print_online(profile: dict, verbose: bool = False) -> None:
     from umash.agent import build_agent  # lazy: only the online path needs Strands
-    agent = build_agent()
+    agent = build_agent(callback_handler=_make_tool_tracer() if verbose else None)
     prompt = (
         f"{profile['situation']} His known accounts: "
         f"{', '.join(profile['known_accounts'])}. "
@@ -101,14 +126,24 @@ def print_online(profile: dict) -> None:
         f"Lay out the plan, keep routine tasks quiet and batched, and surface the "
         f"weighty decisions one at a time."
     )
+    if verbose:
+        print("=" * 72)
+        print("UMASH — live Strands agent on Amazon Bedrock")
+        print("Watch the agent call its tools as it works:")
+        print("=" * 72)
     result = agent(prompt)
-    print(result)
+    if not verbose:
+        print(result)
+    else:
+        print()  # the streamed text already printed; just close the line
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Umash demo")
     ap.add_argument("--offline", action="store_true",
                     help="deterministic walkthrough, no Bedrock call")
+    ap.add_argument("--verbose", action="store_true",
+                    help="online run: print each Strands tool call as it fires")
     args = ap.parse_args()
 
     profile = load_profile()
@@ -116,7 +151,7 @@ def main() -> None:
         print_offline(profile)
     else:
         try:
-            print_online(profile)
+            print_online(profile, verbose=args.verbose)
         except Exception as e:  # noqa: BLE001
             print(f"[online run failed: {e}]\nFalling back to --offline walkthrough:\n")
             print_offline(profile)
